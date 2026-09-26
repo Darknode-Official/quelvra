@@ -3,7 +3,7 @@
 // Every check here is independent of the engine's own verifier: the generator's AST is evaluated
 // by its own evaluator, answers by an evaluator of Quelvra trees that does not use verify.js.
 import { test, ok } from "./harness.js";
-import { generate, runCase, checkParse, checkSubstitution, checkEqTruth, answerKey } from "../../tools/quelvra-fuzz-lib.mjs";
+import { generate, runCase, checkParse, checkSubstitution, checkEqTruth, answerKey } from "../tools/fuzz-lib.mjs";
 import { solve } from "../public/engine/quelvra.js";
 
 const SEED = 20260926;

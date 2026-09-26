@@ -1,4 +1,4 @@
-// Judge for the Quelvra coverage corpora (tools/coverage.mjs, test/quelvra/coverage.test.js).
+// Judge for the Quelvra coverage corpora (tools/coverage.mjs, test/coverage.test.js).
 // judge(expectation, result) -> "ok" (verified and correct) | "refused" (no verified answer) | "WRONG".
 import { toText } from "../public/engine/print.js";
 import { parse } from "../public/engine/parse.js";
