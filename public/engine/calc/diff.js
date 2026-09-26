@@ -51,15 +51,39 @@ const RULE_NAME = {
   ln: "d/du ln u = 1/u", abs: "d/du |u| = u/|u| (u != 0)", erf: "d/du erf u = (2/sqrt(pi)) e^(-u^2)",
 };
 
+// (fg)' = f'g + fg' with f and g named in the order they are written
+function productWhy(u, vary) {
+  const t = toText(u);
+  const [f, g] = [...vary].sort((a, b) => t.indexOf(toText(a)) - t.indexOf(toText(b)));
+  return `(fg)' = f'g + fg' with f = ${toText(f)} and g = ${toText(g)}: differentiate one factor at a time and add.`;
+}
+
 // ---------------- core ----------------
+// Steps read top-down: a rule's step comes first and the derivatives it needed (logged while it was
+// being computed, after `mark`) become its sub-steps, in the order the parts are written.
+function adopt(log, mark, st) {
+  const s = log.add(st);
+  const cur = log.cur;
+  if (!s || !cur || mark >= cur.length - 1) return s;
+  const kids = cur.splice(mark, cur.length - 1 - mark);
+  const whole = st.before && st.before.k === "deriv" ? toText(st.before.args[0]) : "";
+  const key = (k) => {
+    const t = k.before && k.before.k === "deriv" ? toText(k.before.args[0]).replace(/^-/, "") : null;
+    const i = t ? whole.indexOf(t) : -1;
+    return i < 0 ? Infinity : i;
+  };
+  s.sub = [...kids.map((k, i) => [k, i]).sort((a, b) => key(a[0]) - key(b[0]) || a[1] - b[1]).map((p) => p[0]), ...(s.sub || [])];
+  return s;
+}
 function d(u, x, log, ctx) {
   if (X.freeOf(u, x)) return ZERO;
+  const mark = log.cur ? log.cur.length : 0;
   switch (u.k) {
     case "sym": return u === x ? ONE : ZERO;
     case "add": {
       const parts = u.args.map((t) => d(t, x, log, ctx));
       const r = S.add(...parts);
-      log.add({ rule: "diff.sum", title: "Sum rule", why: "The derivative of a sum is the sum of the derivatives.", before: X.deriv(u, x), after: r });
+      adopt(log, mark, { rule: "diff.sum", title: "Sum rule", why: "The derivative of a sum is the sum of the derivatives." + (u.args.some((t) => X.freeOf(t, x)) ? " A constant term has derivative 0." : ""), before: X.deriv(u, x), after: r });
       return r;
     }
     case "mul": {
@@ -70,7 +94,7 @@ function d(u, x, log, ctx) {
         const inner = vary.length === 1 ? vary[0] : X.mul(...vary);
         const dv = d(inner, x, log, ctx);
         const r = S.mul(...cst, dv);
-        log.add({ rule: "diff.constant-multiple", title: "Constant multiple rule", why: `${toText(S.mul(...cst))} does not depend on ${x.name}, so it stays as a factor.`, before: X.deriv(u, x), after: r });
+        adopt(log, mark, { rule: "diff.constant-multiple", title: "Constant multiple rule", why: `${toText(S.mul(...cst))} does not depend on ${x.name}, so it stays as a factor.`, before: X.deriv(u, x), after: r });
         return r;
       }
       // quotient presentation: numerator / denominator
@@ -81,13 +105,13 @@ function d(u, x, log, ctx) {
         const gg = S.mul(...den.map((p) => S.pow(p.args[0], X.num(N.neg(p.args[1].v)))));
         const df = d(f, x, log, ctx), dg = d(gg, x, log, ctx);
         const r = S.div(S.sub(S.mul(df, gg), S.mul(f, dg)), S.pow(gg, TWO));
-        log.add({ rule: "diff.quotient", title: "Quotient rule", why: "(f/g)' = (f'g - fg')/g^2", before: X.deriv(u, x), after: r, conditions: [X.rel("!=", gg, ZERO)] });
+        adopt(log, mark, { rule: "diff.quotient", title: "Quotient rule", why: "(f/g)' = (f'g - fg')/g^2", before: X.deriv(u, x), after: r, conditions: [X.rel("!=", gg, ZERO)] });
         return r;
       }
       // product rule (n-ary): sum over i of f1 ... fi' ... fn
       const terms = vary.map((fi, i) => S.mul(...vary.map((fj, j) => (i === j ? d(fj, x, log, ctx) : fj))));
       const r = S.add(...terms);
-      log.add({ rule: "diff.product", title: "Product rule", why: vary.length === 2 ? "(fg)' = f'g + fg'" : "Differentiate one factor at a time and add the results.", before: X.deriv(u, x), after: r });
+      adopt(log, mark, { rule: "diff.product", title: "Product rule", why: vary.length === 2 ? productWhy(u, vary) : "Differentiate one factor at a time and add the results.", before: X.deriv(u, x), after: r });
       return r;
     }
     case "pow": {
@@ -99,14 +123,14 @@ function d(u, x, log, ctx) {
         const chain = b !== x;
         if (X.isNum(e) && e.v.d !== 1n && e.v.d % 2n === 0n && ctx.conditions) ctx.conditions.push({ node: b, rel: ">0", reason: "the derivative of an even root needs a positive radicand" });
         if (X.isNum(e) && e.v.n < 0n && ctx.conditions) ctx.conditions.push({ node: b, rel: "!=0", reason: "negative power" });
-        log.add({ rule: chain ? "diff.power-chain" : "diff.power", title: chain ? "Power rule with chain rule" : "Power rule", why: chain ? `d/dx u^n = n u^(n-1) u', with u = ${toText(b)}, n = ${toText(e)}.` : `d/dx x^n = n x^(n-1) with n = ${toText(e)}.`, before: X.deriv(u, x), after: r });
+        adopt(log, mark, { rule: chain ? "diff.power-chain" : "diff.power", title: chain ? "Power rule with chain rule" : "Power rule", why: chain ? `d/dx u^n = n u^(n-1) u', with u = ${toText(b)}, n = ${toText(e)}.` : `d/dx x^n = n x^(n-1) with n = ${toText(e)}.`, before: X.deriv(u, x), after: r });
         return r;
       }
       if (X.freeOf(b, x)) {
         // a^v -> a^v ln(a) v'
         const de = d(e, x, log, ctx);
         const r = b === E ? S.mul(u, de) : S.mul(u, S.fn("ln", b), de);
-        log.add({ rule: b === E ? "diff.exp" : "diff.exponential", title: b === E ? "Exponential rule" : "Exponential rule (base a)", why: b === E ? "d/dx e^u = e^u u'" : "d/dx a^u = a^u ln(a) u'", before: X.deriv(u, x), after: r });
+        adopt(log, mark, { rule: b === E ? "diff.exp" : "diff.exponential", title: b === E ? "Exponential rule" : "Exponential rule (base a)", why: (b === E ? "d/dx e^u = e^u u'" : "d/dx a^u = a^u ln(a) u'") + (e === x ? "." : `, with u = ${toText(e)}.`), before: X.deriv(u, x), after: r });
         return r;
       }
       // u^v with both variable: logarithmic differentiation
@@ -123,7 +147,7 @@ function d(u, x, log, ctx) {
         const [base, arg] = u.args;
         if (X.freeOf(base, x)) {
           const r = S.div(d(arg, x, log, ctx), S.mul(arg, S.fn("ln", base)));
-          log.add({ rule: "diff.log-base", title: "Logarithm rule", why: `d/dx log_b(u) = u' / (u ln b) with b = ${toText(base)}.`, before: X.deriv(u, x), after: r });
+          adopt(log, mark, { rule: "diff.log-base", title: "Logarithm rule", why: `d/dx log_b(u) = u' / (u ln b) with b = ${toText(base)}.`, before: X.deriv(u, x), after: r });
           return r;
         }
         return d(S.div(S.fn("ln", arg), S.fn("ln", base)), x, log, ctx);
@@ -146,13 +170,13 @@ function d(u, x, log, ctx) {
       if (u.name === "abs" && ctx.conditions) ctx.conditions.push({ node: inner, rel: "!=0", reason: "|u| is not differentiable where u = 0" });
       if (u.name === "ln" && ctx.conditions) ctx.conditions.push({ node: inner, rel: ">0", reason: "ln u is defined for u > 0" });
       const chain = inner !== x;
-      log.add({ rule: `diff.${u.name}${chain ? "-chain" : ""}`, title: chain ? `Chain rule with ${u.name}` : `Derivative of ${u.name}`, why: (RULE_NAME[u.name] || `derivative of ${u.name}`) + (chain ? `, with u = ${toText(inner)}, times u'.` : "."), before: X.deriv(u, x), after: r });
+      adopt(log, mark, { rule: `diff.${u.name}${chain ? "-chain" : ""}`, title: chain ? `Chain rule with ${u.name}` : `Derivative of ${u.name}`, why: (RULE_NAME[u.name] || `derivative of ${u.name}`) + (chain ? `, with u = ${toText(inner)}, times u'.` : "."), before: X.deriv(u, x), after: r });
       return r;
     }
     case "piecewise": {
       const out = [];
       for (let i = 0; i < u.args.length; i += 2) out.push(d(u.args[i], x, log, ctx), u.args[i + 1]);
-      log.add({ rule: "diff.piecewise", title: "Differentiate each piece", why: "Inside each piece the derivative is the derivative of that piece; at the boundaries the derivative must be checked separately.", before: X.deriv(u, x), after: X.piecewise(...out) });
+      adopt(log, mark, { rule: "diff.piecewise", title: "Differentiate each piece", why: "Inside each piece the derivative is the derivative of that piece; at the boundaries the derivative must be checked separately.", before: X.deriv(u, x), after: X.piecewise(...out) });
       return X.mk("piecewise", out);
     }
     case "deriv": {
@@ -169,7 +193,7 @@ function d(u, x, log, ctx) {
         const [f, t, lo, hi] = u.args;
         if (X.freeOf(f, x)) {
           const r = S.sub(S.mul(X.subs(f, { [t.name]: hi }), d(hi, x, log, ctx)), S.mul(X.subs(f, { [t.name]: lo }), d(lo, x, log, ctx)));
-          log.add({ rule: "diff.ftc", title: "Fundamental theorem of calculus", why: "d/dx of the integral from a(x) to b(x) of f(t) dt is f(b(x)) b'(x) - f(a(x)) a'(x).", before: X.deriv(u, x), after: r });
+          adopt(log, mark, { rule: "diff.ftc", title: "Fundamental theorem of calculus", why: "d/dx of the integral from a(x) to b(x) of f(t) dt is f(b(x)) b'(x) - f(a(x)) a'(x).", before: X.deriv(u, x), after: r });
           return r;
         }
       }
@@ -190,8 +214,9 @@ export function diff(u, x, opts = {}) {
   const ctx = opts.ctx || makeCtx();
   let cur = simplify(u, ctx);
   for (let i = 0; i < n; i++) {
+    const mark = log.cur ? log.cur.length : 0;
     const res = simplify(d(cur, xs, log, ctx), ctx);
-    if (n > 1) log.add({ rule: "diff.higher-order", title: `Derivative number ${i + 1}`, why: `Differentiate again to reach order ${n}.`, before: X.deriv(cur, xs), after: res, kind: "note" });
+    if (n > 1) adopt(log, mark, { rule: "diff.higher-order", title: `Derivative number ${i + 1}`, why: `Differentiate again to reach order ${n}.`, before: X.deriv(cur, xs), after: res, kind: "note" });
     cur = res;
   }
   return cur;

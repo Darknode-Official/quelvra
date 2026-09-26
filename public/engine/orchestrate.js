@@ -67,6 +67,12 @@ function recognise(input, options) {
     return { error: Object.assign(new Error(`"${src}" is not a math problem.`), { pos: 0, hint: "Type an equation or expression, for example 2x + 3 = 11, or pick one from Examples." }), text: src, source };
   }
   const t = translate(src);
+  // a word problem that was understood but has no sensible answer: say why, and do not fall back to the parser
+  if (!t.ok && t.pattern && /^word-/.test(t.pattern)) {
+    const e = new Error(t.reason);
+    e.pos = 0; e.hint = "Check the numbers in the problem; as written, no answer fits the story.";
+    return { error: e, text: src, source, languageReason: t.reason };
+  }
   if (t.ok && t.pattern !== "math") {
     try {
       const { node, warnings, congruence } = parseDetailed(t.math);

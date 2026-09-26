@@ -24,8 +24,13 @@ test("hessian", () => eq(toText(hessian(parse("x^2 y"), [X.sym("x"), X.sym("y")]
 test("jacobian", () => eq(toText(jacobian([parse("x y"), parse("x + y")], [X.sym("x"), X.sym("y")])), "[[y, x], [1, 1]]"));
 test("steps recorded", () => {
   const r = diffSteps(parse("sin(x^2)"), "x");
-  ok(r.steps.some((s) => s.rule === "diff.sin-chain"), "chain step");
-  ok(r.steps.some((s) => s.rule.startsWith("diff.power")), "power step");
+  const all = (ss) => ss.flatMap((s) => [s, ...all(s.sub || [])]);
+  ok(all(r.steps).some((s) => s.rule === "diff.sin-chain"), "chain step");
+  ok(all(r.steps).some((s) => s.rule.startsWith("diff.power")), "power step");
+  // the rule that was applied last comes first; the inner derivative is its sub-step
+  eq(r.steps.length, 1);
+  eq(r.steps[0].rule, "diff.sin-chain");
+  eq(r.steps[0].sub[0].rule, "diff.power");
 });
 test("abs derivative records condition", () => {
   const r = diffSteps(parse("|x|"), "x");

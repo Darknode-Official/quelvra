@@ -71,7 +71,14 @@ export function solveLinearSystem(node, card, env) {
   if (!lf) return null;
   const log = env.log;
   const r = LA.solve(lf.A, lf.b);
-  for (const s of r.steps || []) log.add({ ...s, rule: String(s.rule || "linalg").replace(/^linalg\./, "solve.linsys.") });
+  for (const s of r.steps || []) {
+    const st = { ...s, rule: String(s.rule || "linalg").replace(/^linalg\./, "solve.linsys.") };
+    if (typeof st.why === "string") st.why = st.why.replace(/column (\d+)/g, (m, k) => (vars[k - 1] ? `column ${k} (the ${vars[k - 1]} column)` : m));
+    // name the columns, and read the reduced matrix back as equations in the unknowns
+    if (st.rule === "solve.linsys.solve.augment") { st.before = original; st.why = `Each row is one equation; the columns hold the coefficients of ${vars.join(", ")} and, after the bar, the right side. Row operations do not change the solutions.`; }
+    if (st.rule === "solve.linsys.solve.unique" && r.status === "unique") { st.title = "Read off the solution"; st.why = `Each row now says one unknown equals a number. Every column has a pivot (rank ${r.rank}), so this is the only solution.`; st.after = X.system(...vars.map((v, i) => X.eq(X.sym(v), tidy(r.solution[i])))); }
+    log.add(st);
+  }
   const answers = [];
   let noSolution = false;
   if (r.status === "none") {

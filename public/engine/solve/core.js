@@ -63,7 +63,12 @@ export function solveCore(expr, S) {
   // 1. polynomial with rational coefficients
   const cs = coeffTrees(e, x);
   if (cs && isRationalPoly(cs)) {
-    const r = solveUPoly(toUPoly(cs), x, S);
+    const up = toUPoly(cs);
+    if (!S.quietLinear && e.k !== "mul" && up.length > 1) {
+      const pt = safe(() => P.toTree(up, x));
+      if (pt && toText(pt) !== toText(e)) S.log.add({ rule: "solve.poly.expand", title: "Expand and collect like terms", why: "Multiply out the brackets and combine terms with the same power of " + x + ".", before: X.eq(e, X.ZERO), after: X.eq(pt, X.ZERO) });
+    }
+    const r = solveUPoly(up, x, S);
     if (r.identity) {
       S.log.add({ rule: "solve.identity", title: "Both sides are the same polynomial", why: "After expanding, every coefficient is 0, so the equation holds for every value.", before: X.eq(e, X.ZERO), after: X.TRUE });
       return { ...emptySol(), all: true, methods: ["identity"] };
@@ -237,6 +242,11 @@ export function isolate(e, S, sub) {
   let steps = 0;
   const residual = [];
   let branches = [{ f: xs[0], c: C(X.neg(X.add(...cs)), dom) }];
+  if (cs.length && peelable(xs[0], x)) {
+    // show the term with x being put on its own before it is unwrapped
+    const before = !(S.depth || 0) && S.original ? S.original : X.eq(e, X.ZERO), after = X.eq(xs[0], branches[0].c);
+    if (toText(before) !== toText(after)) step(S, "solve.isolate.subtract", `Get the term with ${x} on its own`, "Move every other term to the other side (changing its sign).", before, after);
+  }
   const done = emptySol();
   done.methods.push("isolation");
   for (let guard = 0; guard < 60 && branches.length; guard++) {
@@ -279,7 +289,9 @@ function invertStep(f, c, S) {
     const [xs, cs] = xTerms(f, x);
     if (xs.length !== 1) return null;
     const nc = C(X.sub(c, X.add(...cs)), dom);
-    step(S, "solve.isolate.subtract", "Move the constant terms", "Subtract the same quantity from both sides.", E0, X.eq(xs[0], nc));
+    const moved = C(X.add(...cs), dom);
+    const neg = X.isNum(moved) && Q.isNeg(moved.v);
+    step(S, "solve.isolate.subtract", "Move the constant terms", neg ? `Add ${toText(C(X.neg(moved), dom))} to both sides.` : `Subtract ${toText(moved)} from both sides.`, E0, X.eq(xs[0], nc));
     return { branches: [{ f: xs[0], c: nc }] };
   }
   if (f.k === "mul") {
@@ -289,7 +301,7 @@ function invertStep(f, c, S) {
     const s = sgn(k, S);
     if (!s) return null;
     const nc = tidy(X.div(c, k), dom);
-    step(S, "solve.isolate.divide", "Divide both sides", `Divide by ${toText(k)} (not 0).`, E0, X.eq(xs[0], nc));
+    step(S, "solve.isolate.divide", `Divide both sides by ${toText(k)}`, `${toText(k)} is not 0, so this is allowed.`, E0, X.eq(xs[0], nc));
     return { branches: [{ f: xs[0], c: nc }] };
   }
   if (f.k === "pow") {
@@ -309,7 +321,7 @@ function invertStep(f, c, S) {
       if (sc === null) return null;
       if (sc <= 0) return none(`${toText(b)}^(...) is always positive, so it cannot equal ${toText(c)}.`);
       const nc = b === X.E ? tidy(X.fn("ln", c), dom) : tidy(X.div(X.fn("ln", c), X.fn("ln", b)), dom);
-      step(S, "solve.isolate.log", "Take logarithms", b === X.E ? "e^A = c with c > 0 means A = ln c." : `${toText(b)}^A = c with c > 0 means A = ln c / ln ${toText(b)}.`, E0, X.eq(ex, nc));
+      step(S, "solve.isolate.log", "Take logarithms", b === X.E ? `e^A = c with c > 0 means A = ln c.` : `${toText(b)}^A = c with c > 0 means A = log_${toText(b)}(c) = ln c / ln ${toText(b)}; here that is ${toText(nc)}.`, E0, X.eq(ex, nc));
       return { branches: [{ f: ex, c: nc }] };
     }
     return null;
@@ -322,7 +334,8 @@ function invertStep(f, c, S) {
         const nc = tidy(X.pow(b, c), dom);
         const sb = sgn(b, S);
         if (sb !== 1 || isZeroExact(X.sub(b, X.ONE), dom)) return null;
-        step(S, "solve.isolate.exp", "Rewrite in exponential form", `log_b(A) = c means A = b^c (with A > 0).`, E0, X.eq(a, nc));
+        const bt = toText(b), lg = bt === "10" ? "log" : `log_${bt}`;
+        step(S, "solve.isolate.exp", "Rewrite in exponential form", `${lg}(A) = c means A = ${bt}^c (with A > 0); here ${bt}^${/^[\w.]+$/.test(toText(c)) ? toText(c) : "(" + toText(c) + ")"} = ${toText(nc)}.`, E0, X.eq(a, nc));
         return { branches: [{ f: a, c: nc }] };
       }
       if (!depends(a, x)) {
@@ -702,9 +715,19 @@ function combineLogs(e, S, sub) {
   for (const r of rs) L = L * r.v.d / Q.bgcd(L, r.v.d);
   const R0 = tidy(X.div(X.neg(X.add(...rest)), lam), dom); // sum r_i ln A_i = R0
   const prod = C(X.mul(...logs.map((l, i) => X.pow(l.A, rs[i]))), dom);
-  S.log.add({ rule: "solve.log.combine", title: "Combine the logarithms", why: "ln a + ln b = ln(ab) and k ln a = ln(a^k) on the domain where every logarithm is defined; values outside that domain are rejected afterwards.", before: X.eq(u, X.ZERO), after: X.eq(X.fn("ln", prod), R0), kind: "conditional" });
   const K = tidy(X.pow(X.E, R0), dom);
-  S.log.add({ rule: "solve.log.exponentiate", title: "Exponentiate both sides", why: "ln A = c means A = e^c.", before: X.eq(X.fn("ln", prod), R0), after: X.eq(prod, K) });
+  // every log has the same numeric base b (lam = 1/ln b): keep the steps in base b
+  const lb = lam.k === "pow" && lam.args[1] === X.NEG_ONE && lam.args[0].k === "fn" && lam.args[0].name === "ln" && X.isNum(lam.args[0].args[0]) ? lam.args[0].args[0] : null;
+  const domainWhy = "on the domain where every logarithm is defined; values outside that domain are rejected afterwards.";
+  if (lb) {
+    const Rb = tidy(X.neg(rest.length ? X.add(...rest) : X.ZERO), dom);
+    const lhs = X.fn("log", lb, prod), b = toText(lb);
+    S.log.add({ rule: "solve.log.combine", title: "Combine the logarithms", why: `log_${b} a + log_${b} c = log_${b}(ac) and k log_${b} a = log_${b}(a^k), ${domainWhy}`, before: X.eq(e, X.ZERO), after: X.eq(lhs, Rb), kind: "conditional" });
+    S.log.add({ rule: "solve.log.exponentiate", title: "Rewrite in exponential form", why: `log_${b}(A) = c means A = ${b}^c, and ${b}^${/^[\w.]+$/.test(toText(Rb)) ? toText(Rb) : "(" + toText(Rb) + ")"} = ${toText(K)}.`, before: X.eq(lhs, Rb), after: X.eq(prod, K) });
+  } else {
+    S.log.add({ rule: "solve.log.combine", title: "Combine the logarithms", why: `ln a + ln b = ln(ab) and k ln a = ln(a^k), ${domainWhy}`, before: X.eq(u, X.ZERO), after: X.eq(X.fn("ln", prod), R0), kind: "conditional" });
+    S.log.add({ rule: "solve.log.exponentiate", title: "Exponentiate both sides", why: `ln A = c means A = e^c${K.k === "pow" && K.args[0] === X.E ? "" : `, and e^(${toText(R0)}) = ${toText(K)}`}.`, before: X.eq(X.fn("ln", prod), R0), after: X.eq(prod, K) });
+  }
   let E = X.sub(prod, K);
   if (L > 1n) {
     E = X.sub(C(X.pow(prod, X.num(Q.Q(L))), dom), C(X.pow(K, X.num(Q.Q(L))), dom));

@@ -17,6 +17,7 @@
 
 import { parse, FUNCTIONS, latexToText } from "./parse.js";
 import { morePatterns, TAIL } from "./language-more.js";
+import { wordPatterns } from "./language-words.js";
 
 const NUMBER_WORDS = {
   zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
@@ -212,6 +213,8 @@ import { advancedPatterns } from "./advanced/language-patterns.js";
 const PATTERNS = [
   ...advancedPatterns({ expr, mathOf, bound, splitInterval, guessVar, looksLikeMath, fnOf }),
   // ---- end advanced continuous commands ----
+  // whole word problems (ages, mixtures, rates, interest, consecutive integers, ...): language-words.js
+  ...wordPatterns({ wordsToNumbers }),
   // probability, statistics, counting, complex numbers, series, geometry, number theory, ... (language-more.js)
   ...morePatterns({ expr, mathOf, LEAD, re }),
   // ---- differential equations and systems ----
@@ -424,6 +427,8 @@ const PATTERNS = [
       return { math: `y + (y + ${m[2]}) = ${m[4]}`, goal: "solve", variable: "y", interpretation: `let y be ${m[3]}'s age (${m[1]} is y + ${m[2]}): y + (y + ${m[2]}) = ${m[4]}` }; } },
   { id: "mixture", re: /^how (?:many|much) (liters|litres|gallons|ml|milliliters|kg|grams|ounces|pounds|l) of (?:a |an )?(\d+(?:\.\d+)?) ?% (?:\w+ )?solution (?:must|should|do you need to|need to|has to) be (?:added to|mixed with) (\d+(?:\.\d+)?) (liters|litres|gallons|ml|milliliters|kg|grams|ounces|pounds|l) of (?:a |an )?(\d+(?:\.\d+)?) ?% (?:\w+ )?solution to (?:get|make|obtain|produce|give) (?:a |an )?(\d+(?:\.\d+)?) ?% (?:\w+ )?solution$/i,
     build: (m) => { if (m[1].toLowerCase() !== m[4].toLowerCase()) return null;
+      // the target strength must lie strictly between the two, or the amount would be negative or undefined
+      if (!(Math.min(+m[2], +m[5]) < +m[6] && +m[6] < Math.max(+m[2], +m[5]))) return null;
       const math = `${m[2]}/100 x + ${m[5]}/100*${m[3]} = ${m[6]}/100 (x + ${m[3]})`;
       return { math, goal: "solve", variable: "x", interpretation: `let x be the ${m[1]} of the ${m[2]}% solution: ${math}` }; } },
 
@@ -567,6 +572,8 @@ export function translate(input) {
     const m = lower.match(p.re);
     if (!m) continue;
     const r = p.build(m);
+    // a pattern that understood the problem and found it impossible stops here instead of letting a looser pattern guess
+    if (r && r.refuse) return { ok: false, reason: r.refuse, pattern: p.id };
     if (!r || !r.math) continue;
     if (!looksLikeMath(r.math)) {
       firstFail = firstFail || { ok: false, reason: `Understood the request as "${p.id}", but part of it is not recognisable math: "${r.math}". Please rewrite it using symbols.`, pattern: p.id };

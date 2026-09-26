@@ -412,8 +412,12 @@ export function definiteIntegral(f, x, a, b, opts = {}) {
   // steps
   const improper = !isFinite(av) || !isFinite(bv) || pieces.some((pc) => fSing(pc.p) || fSing(pc.q));
   for (const pc of pieces) {
-    const sideTxt = (n, s) => (isInf(n.t) ? `lim(${xs.name} -> ${n.t === OO ? "oo" : "-oo"})` : (fSing(n) || interior.includes(n)) ? `lim(${xs.name} -> ${T(n.t)}${s})` : `F(${T(n.t)})`);
-    log.add({ rule: improper || interior.length ? "int.improper" : "int.ftc", title: `Evaluate on [${T(pc.p.t)}, ${T(pc.q.t)}]`, why: `${sideTxt(pc.q, "-")} F = ${T(pc.Lq.v)} and ${sideTxt(pc.p, "+")} F = ${T(pc.Lp.v)}.`, before: X.integral(f0, xs, pc.p.t, pc.q.t), after: canon(X.sub(pc.Lq.v, pc.Lp.v)) });
+    // F at an ordinary end point, a one-sided limit of F at a singular or infinite one
+    const sideTxt = (n, s) => (isInf(n.t) ? `the limit of F(${xs.name}) as ${xs.name} -> ${n.t === OO ? "oo" : "-oo"}` : (fSing(n) || interior.includes(n)) ? `the limit of F(${xs.name}) as ${xs.name} -> ${T(n.t)}${s}` : `F(${T(n.t)})`);
+    const hiT = sideTxt(pc.q, "-"), loT = sideTxt(pc.p, "+");
+    const plain = /^F\(/.test(hiT) && /^F\(/.test(loT);
+    const diffT = `${T(pc.Lq.v)} - ${/^-/.test(T(pc.Lp.v)) || pc.Lp.v.k === "add" ? "(" + T(pc.Lp.v) + ")" : T(pc.Lp.v)}`;
+    log.add({ rule: improper || interior.length ? "int.improper" : "int.ftc", title: `Evaluate on [${T(pc.p.t)}, ${T(pc.q.t)}]`, why: `${plain ? "Upper limit minus lower limit: " : "As x -> each end: "}${hiT} = ${T(pc.Lq.v)} and ${loT} = ${T(pc.Lp.v)}, so the integral is ${diffT}.`.replace(/^As x -> each end: /, "Take the limits at the ends: "), before: X.integral(f0, xs, pc.p.t, pc.q.t), after: canon(X.sub(pc.Lq.v, pc.Lp.v)) });
   }
   if (pieces.length > 1) log.add({ rule: "int.ftc", title: "Add the pieces", why: "The integral over the whole interval is the sum over the pieces.", before: X.integral(f0, xs, a, b), after: value });
   return { status: "exact", value, approx, F, method: improper ? "int.improper" : "int.ftc", conditions: [...anti.conditions.filter((c) => !/tan\(/.test(c))], checks, antiMethod: anti.method };

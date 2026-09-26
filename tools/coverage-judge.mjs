@@ -10,7 +10,7 @@ const numOf = (a) => {
   return null;
 };
 const close = (x, y) => x != null && Math.abs(x - y) <= 1e-7 * Math.max(1, Math.abs(y));
-export const textOf = (a) => a.values ? a.values.map(([k, v]) => `${k} = ${toText(v)}`).join(", ") : a.tree ? (a.label ? a.label + " = " : "") + toText(a.tree) + (a.unit ? " " + a.unit : "") : a.approx ? "~" + a.approx.value : (a.text || a.label || a.kind);
+export const textOf = (a) => a.values ? a.values.map(([k, v]) => `${k} = ${toText(v)}`).join(", ") : a.tree ? (a.label && a.tree.k !== "eq" ? a.label + " = " : "") + toText(a.tree) + (a.unit ? " " + a.unit : "") : a.approx ? "~" + a.approx.value : (a.text || a.label || a.kind);
 
 function sampleEq(t, want, v) {
   const pts = [0.3, 0.7, 1.3, 2.1, -0.45, 1.7];
@@ -24,6 +24,8 @@ function sampleEq(t, want, v) {
   }
   return n >= 3;
 }
+// word problems solved as a system say which unknown the question asks for: "(the question asks for m)"
+export const askedVar = (r) => { const m = /\(the question asks for ([a-z])\)/.exec((r.input && r.input.interpretation) || ""); return m ? m[1] : null; };
 export function judge(exp, r) {
   const answers = (r.answers || []).filter((a) => a.kind !== "none" || a.label);
   const verified = r.verification && r.verification.status === "passed";
@@ -34,7 +36,11 @@ export function judge(exp, r) {
     if (r.ok && verified && exp && exp.none && (r.noSolution || answers.some((a) => a.kind === "none"))) return "ok";
     return "refused";
   }
-  if (typeof exp === "number") return real.some((a) => close(numOf(a), exp)) ? "ok" : "WRONG";
+  if (typeof exp === "number") {
+    // a system answer: the value the word problem asks for (named in the interpretation), else any shown value
+    const asked = askedVar(r);
+    return real.some((a) => (a.values ? a.values.some(([k, v]) => (!asked || k === asked) && close(numOf({ tree: v }), exp)) : close(numOf(a), exp))) ? "ok" : "WRONG";
+  }
   if (exp.roots) {
     const got = real.filter((a) => a.kind === "exact" || a.kind === "approx").map(numOf);
     if (got.length !== exp.roots.length || got.some((g) => g == null)) return exp.roots.length === 0 && (r.noSolution) ? "ok" : "WRONG";

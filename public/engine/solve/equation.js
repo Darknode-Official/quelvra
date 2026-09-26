@@ -51,10 +51,67 @@ export function solveEquation(node, card, env, mode = "exact") {
   const e = difference(eqn, dom);
   if (mode === "numeric-check") return numericCandidate(e, x, original, env);
   const iv = parseInterval(opts.interval);
-  const S = { x, topVar: x, log, domain: dom, digits, checkTime: env.checkTime, allowNumeric: true, interval: iv, depth: 0 };
-  log.add({ rule: "solve.start", title: "Move everything to one side", why: "Solve f(x) = 0 where f is the difference of the two sides.", before: eqn, after: X.eq(e, X.ZERO) });
+  const S = { x, topVar: x, log, domain: dom, digits, checkTime: env.checkTime, allowNumeric: true, interval: iv, depth: 0, original: eqn };
+  // a linear equation gets the textbook steps (collect, then divide); otherwise move everything to
+  // one side, unless it is already there
+  const linear = safe(() => linearSteps(eqn, x, log), false);
+  if (linear) S.quietLinear = true;
+  const trivialStart = eqn.k === "eq" && eqn.args[1] === X.ZERO && (eqn.args[0] === e || toText(eqn.args[0]) === toText(e));
+  const cur = log.cur, at = cur ? cur.length : -1;
+  if (!linear && !trivialStart) log.add({ rule: "solve.start", title: "Move everything to one side", why: moveWhy(eqn), before: eqn, after: X.eq(e, X.ZERO) });
   const sol = solveCore(e, S);
+  // the start step is noise when the next step works on the original equation directly (2^x = 32)
+  if (!linear && !trivialStart && cur && cur[at] && cur[at].rule === "solve.start" && cur[at + 1] && cur[at + 1].before && toText(cur[at + 1].before) === toText(eqn)) cur.splice(at, 1);
   return assemble(sol, e, x, original, env, iv);
+}
+
+function moveWhy(eqn) {
+  const R = eqn && eqn.k === "eq" ? eqn.args[1] : null;
+  if (R && X.isNum(R)) return Q.isNeg(R.v) ? `Add ${Q.toString(Q.neg(R.v))} to both sides, so the right side is 0.` : `Subtract ${Q.toString(R.v)} from both sides, so the right side is 0.`;
+  if (R) return `Subtract ${toText(R)} from both sides, so the right side is 0.`;
+  return "Solve f(x) = 0 where f is the difference of the two sides.";
+}
+
+// Textbook steps for a1 x + b1 = a2 x + b2 with rational coefficients: expand, collect the x terms
+// on one side and the numbers on the other, then divide by the coefficient. Returns false (and logs
+// nothing) for anything else.
+function linearSteps(eqn, x, log) {
+  if (!eqn || eqn.k !== "eq" || !log.cur) return false;
+  const [L, R] = eqn.args;
+  const cl = coeffTrees(L, x), cr = coeffTrees(R, x);
+  if (!cl || !cr || !isRationalPoly(cl) || !isRationalPoly(cr) || cl.length > 2 || cr.length > 2) return false;
+  const co = (c, i) => (c[i] ? c[i].v : Q.ZERO);
+  const a1 = co(cl, 1), b1 = co(cl, 0), a2 = co(cr, 1), b2 = co(cr, 0);
+  const a = Q.sub(a1, a2), b = Q.sub(b2, b1);
+  if (Q.isZero(a)) return false;
+  const X0 = X.sym(x);
+  const side = (p, q) => C(X.add(X.mul(X.num(p), X0), X.num(q)));
+  const Lt = side(a1, b1), Rt = side(a2, b2);
+  let cur = eqn;
+  if (toText(Lt) !== toText(L) || toText(Rt) !== toText(R)) {
+    const next = X.eq(Lt, Rt);
+    log.add({ rule: "solve.linear.expand", title: "Expand and simplify each side", why: "Multiply out any brackets and combine like terms.", before: cur, after: next });
+    cur = next;
+  }
+  const moves = [];
+  const term = (q, withX) => toText(C(withX ? X.mul(X.num(Q.abs(q)), X0) : X.num(Q.abs(q))));
+  if (!Q.isZero(a2)) moves.push(`${Q.isNeg(a2) ? "add" : "subtract"} ${term(a2, true)} ${Q.isNeg(a2) ? "to" : "from"} both sides`);
+  if (!Q.isZero(b1)) moves.push(`${Q.isNeg(b1) ? "add" : "subtract"} ${term(b1, false)} ${Q.isNeg(b1) ? "to" : "from"} both sides`);
+  if (moves.length) {
+    const next = X.eq(C(X.mul(X.num(a), X0)), X.num(b));
+    const w = moves.join(" and ");
+    log.add({ rule: "solve.linear.collect", title: `Get the ${x} terms on one side and the numbers on the other`, why: w[0].toUpperCase() + w.slice(1) + ".", before: cur, after: next });
+    cur = next;
+  }
+  if (!Q.isOne(a)) {
+    const next = X.eq(X0, X.num(Q.div(b, a)));
+    const inv = Q.inv(a);
+    const [title, why] = Q.eq(a, Q.NEG_ONE) ? ["Multiply both sides by -1", `This turns -${x} into ${x}.`]
+      : Q.isInt(inv) ? [`Multiply both sides by ${Q.toString(inv)}`, `This undoes the division by ${Q.toString(inv)} and leaves ${x} on its own.`]
+      : [`Divide both sides by ${Q.toString(a)}`, `This leaves ${x} on its own (${Q.toString(a)} is not 0).`];
+    log.add({ rule: "solve.linear.divide", title, why, before: cur, after: next });
+  }
+  return true;
 }
 
 function parseInterval(iv) {

@@ -418,6 +418,7 @@ function answerCard(r) {
     }
     if (a.kind === "approx" && !a.tree) { list.append(approxView(a)); continue; }
     if (a.kind === "none") { if (a.label) list.append(h("p", { class: "muted", style: "margin:0" }, a.label)); continue; }
+    if (!a.tree && Array.isArray(a.values)) { list.append(valuesView(a)); continue; }
     const rec = a.tree;
     const row = h("div", { class: "ans" });
     if (a.label) row.append(h("div", { class: "ans-label" }, a.label));
@@ -434,6 +435,27 @@ function answerCard(r) {
   card.append(list);
   return card;
 }
+
+// a system solution or family: { values: [["x", tree], ...], params?: ["t"] }, one "name = value" per variable
+function valuesView(a) {
+  const row = h("div", { class: "ans" });
+  if (a.label) row.append(h("div", { class: "ans-label" }, a.label));
+  const pairs = a.values.filter((p) => Array.isArray(p) && p.length === 2);
+  const box = h("div", { class: "ans-math ans-values" });
+  pairs.forEach(([name, v], i) => {
+    if (i) box.append(h("span", { class: "ans-sep" }, ","));
+    box.append(h("span", { class: "ans-pair" }, h("span", { class: "ans-var" }, String(name) + "\u00a0=\u00a0"), mathEl(v, { display: false, label: String(name) })));
+  });
+  row.append(box);
+  if (paramsNote(a)) row.append(h("div", { class: "muted small-t" }, paramsNote(a)));
+  const tools = h("div", { class: "ans-tools" });
+  tools.append(copyBtn(valuesText(a), "text", "Copy answer as text"));
+  if (pairs.every(([, v]) => v && v.latex)) tools.append(copyBtn(pairs.map(([n, v]) => n + " = " + v.latex).join(",\\; ") + (paramsNote(a) ? ",\\; \\text{" + paramsNote(a) + "}" : ""), "LaTeX", "Copy answer as LaTeX"));
+  row.append(tools);
+  return row;
+}
+const paramsNote = (a) => (Array.isArray(a.params) && a.params.length ? "for any value of " + a.params.join(", ") : "");
+const valuesText = (a) => a.values.filter((p) => Array.isArray(p) && p.length === 2).map(([n, v]) => n + " = " + textOf(v)).join(", ") + (paramsNote(a) ? ", " + paramsNote(a) : "");
 
 function statusBadge(ok, text) {
   const cls = ok === true ? "st-ok" : ok === false ? "st-bad" : ok === "warn" ? "st-warn" : "st-mut";
@@ -621,6 +643,7 @@ function answerSummary(r) {
   const a = (r.answers || []).find((x) => x && x.kind !== "none");
   if (!a) return STATUS_TEXT[r.solutionStatus] || "no answer";
   if (a.tree) return textOf(a.tree);
+  if (Array.isArray(a.values)) return valuesText(a);
   if (a.approx) return "≈ " + a.approx.value;
   return a.kind;
 }

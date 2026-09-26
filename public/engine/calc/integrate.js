@@ -149,6 +149,14 @@ class Engine {
     if (now() > this.deadline) throw intError("TIMEOUT", "Quelvra: integration time limit reached");
   }
   step(s) { this.log.add(s); }
+  // steps read top-down: the step for a rule comes first and the integrals it needed (logged after
+  // `mark`) become its sub-steps
+  mark() { return this.log.cur ? this.log.cur.length : 0; }
+  stepAdopt(mark, s) {
+    const cur = this.log.cur;
+    const kids = cur && cur.length > mark ? cur.splice(mark) : [];
+    this.log.add({ ...s, sub: [...kids, ...(s.sub || [])] });
+  }
   // a proof of non-elementarity is only about the integrand it was made for (a sub-integral being
   // non-elementary says nothing about a sum it came from), so it is keyed by that integrand
   noteNonelementary(f, proof) { this.neProofs.set(f, proof); }
@@ -201,10 +209,11 @@ class Engine {
       if (c !== ONE) {
         const g = canon(rest);
         const s = this.attempt(() => {
+          const m = this.mark();
           const G = this.I(g, x);
           if (!G) return null;
           const res = canon(X.mul(c, G));
-          this.step({ rule: "int.linear", title: "Constant multiple", why: `${T(c)} does not depend on ${x.name}, so it moves outside the integral.`, before, after: res, sub: [] });
+          this.stepAdopt(m, { rule: "int.linear", title: "Constant multiple", why: `${T(c)} does not depend on ${x.name}, so it moves outside the integral.`, before, after: res, sub: [] });
           return res;
         });
         if (s) return s;
@@ -214,10 +223,12 @@ class Engine {
     }
     if (f.k === "add") {
       const s = this.attempt(() => {
-        const parts = [];
-        for (const t of f.args) { const G = this.I(t, x); if (!G) return null; parts.push(G); }
+        const m = this.mark(), parts = [];
+        // integrate the terms in the order they are written
+        const ft = T(f), pos = (t) => { const i = ft.indexOf(T(t).replace(/^-/, "")); return i < 0 ? Infinity : i; };
+        for (const t of [...f.args].sort((a, b) => pos(a) - pos(b))) { const G = this.I(t, x); if (!G) return null; parts.push(G); }
         const res = canon(X.add(...parts));
-        this.step({ rule: "int.linear", title: "Integrate term by term", why: "The integral of a sum is the sum of the integrals.", before, after: res });
+        this.stepAdopt(m, { rule: "int.linear", title: "Integrate term by term", why: "The integral of a sum is the sum of the integrals.", before, after: res });
         return res;
       });
       if (s) return s;
@@ -523,10 +534,11 @@ class Engine {
     if (hr === X.UNDEF || X.contains(hr, X.UNDEF)) return null;
     // no progress: the substituted integrand is the original one renamed
     if (X.subs(hr, { [t.name]: x }) === f) return null;
+    const m = this.mark();
     const G = this.I(hr, t);
     if (!G) return null;
     const F = canon(X.subs(G, { [t.name]: g }));
-    this.step({ rule: "int.usub", title: `Substitute ${t.name} = ${T(g)}`, why: `d${t.name} = ${T(dg)} d${x.name}${inv ? `, and ${x.name} = ${T(inv.x)}` : ""}, so the integral becomes an integral in ${t.name}.`, before: X.integral(f, x), after: X.integral(hr, t) });
+    this.stepAdopt(m, { rule: "int.usub", title: `Substitute ${t.name} = ${T(g)}`, why: `d${t.name} = ${T(dg)} d${x.name}${inv ? `, and ${x.name} = ${T(inv.x)}` : ""}, so the integral becomes an integral in ${t.name}.`, before: X.integral(f, x), after: X.integral(hr, t) });
     this.step({ rule: "int.usub", title: "Substitute back", why: `Replace ${t.name} by ${T(g)}.`, before: G, after: F });
     return F;
   }
@@ -568,6 +580,7 @@ class Engine {
     const dv = rest.length ? canon(X.mul(...rest)) : ONE;
     // polynomials are integrated only when u is a transcendental log / inverse function
     if (best === 2 && rest.length === 0) return null;
+    const m = this.mark();
     if (best === 3 && dv === ONE) return null;
     if (best === 2 && rest.every((w) => this.partsClass(w, x) === 2)) return null;
     if (u.k === "fn" && (u.name === "abs" || u.name === "sign")) return null;
@@ -581,7 +594,7 @@ class Engine {
     const c1 = ratioConst(r, f, x);
     if (c1 !== null && c1 !== NEG_ONE) {
       const res = canon(X.div(uv, X.add(ONE, c1)));
-      this.step({ rule: "int.parts", title: "Integration by parts (the integral returns)", why: `With u = ${T(u)} and dv = ${T(dv)} dx, the new integral is ${T(c1)} times the original one, so I = uv - (${T(c1)}) I; solve for I.`, before, after: res });
+      this.stepAdopt(m, { rule: "int.parts", title: "Integration by parts (the integral returns)", why: `With u = ${T(u)} and dv = ${T(dv)} dx, the new integral is ${T(c1)} times the original one, so I = uv - (${T(c1)}) I; solve for I.`, before, after: res });
       return res;
     }
     // second round for the cyclic case: integrate r by parts once more with the same kind of choice
@@ -603,14 +616,14 @@ class Engine {
       const den = canon(X.sub(ONE, c2));
       if (den === ZERO) return null;
       const res = canon(X.div(X.sub(uv, X.mul(cr, u2, v2)), den));
-      this.step({ rule: "int.parts", title: "Integration by parts twice (the integral returns)", why: `Integrating by parts twice (u = ${T(u)}, then u = ${T(u2)}) gives the original integral back with factor ${T(c2)}; solving the equation I = ... + (${T(c2)}) I gives the result.`, before, after: res });
+      this.stepAdopt(m, { rule: "int.parts", title: "Integration by parts twice (the integral returns)", why: `Integrating by parts twice (u = ${T(u)}, then u = ${T(u2)}) gives the original integral back with factor ${T(c2)}; solving the equation I = ... + (${T(c2)}) I gives the result.`, before, after: res });
       return res;
     });
     if (cyc) return cyc;
     const G = this.I(r, x);
     if (!G) return null;
     const res = canon(X.sub(uv, G));
-    this.step({ rule: "int.parts", title: "Integration by parts", why: `u dv = uv - v du with u = ${T(u)} (chosen by LIATE) and dv = ${T(dv)} dx, so v = ${T(v)}.`, before, after: res });
+    this.stepAdopt(m, { rule: "int.parts", title: "Integration by parts", why: `u dv = uv - v du with u = ${T(u)} and dv = ${T(dv)} dx, so du = ${du === ONE ? "" : T(du) + " "}dx and v = ${T(v)}. Then subtract the integral of v du.`, before, after: res });
     return res;
   }
 

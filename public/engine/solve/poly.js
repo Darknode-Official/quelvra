@@ -22,10 +22,20 @@ export function toUPoly(coeffs) { return P.norm(coeffs.map((t) => t.v)); }
 
 const polyTree = (p, x) => P.toTree(p, x);
 
+// "Add 3 to both sides, then divide by 2." for the linear factor c1 x + c0
+function linearWhy(f, x) {
+  const [c0, c1] = f, parts = [];
+  if (!Q.isZero(c0)) parts.push(`${Q.isNeg(c0) ? "add" : "subtract"} ${Q.toString(Q.abs(c0))} ${Q.isNeg(c0) ? "to" : "from"} both sides`);
+  if (!Q.isOne(c1)) parts.push(`divide by ${Q.toString(c1)}`);
+  const w = parts.join(", then ");
+  return w ? w[0].toUpperCase() + w.slice(1) + "." : `This gives ${x} directly.`;
+}
+
 // Solve p(x) = 0 for a UPoly p over Q.
 // Returns { exact: [{tree, multiplicity, real, form}], approx: [...], complete, realCount, degree, factored }
 export function solveUPoly(p, x, S) {
-  const log = S.log;
+  const mainLog = S.log;
+  let log = mainLog;
   const domain = S.domain || "real";
   const digits = S.digits || 20;
   p = P.norm(p);
@@ -36,18 +46,25 @@ export function solveUPoly(p, x, S) {
   const fq = P.factorQ(p);
   const factored = safe(() => P.factorTree(ptree), ptree);
   if (fq.factors.length > 1 || (fq.factors[0] && fq.factors[0].mult > 1)) {
-    log.add({ rule: "solve.poly.factor", title: "Factor over the rationals", why: "Exact factorisation (square-free decomposition + Zassenhaus); a product is 0 exactly when one of its factors is 0.", before: X.eq(ptree, X.ZERO), after: X.eq(factored, X.ZERO) });
+    log.add({ rule: "solve.poly.factor", title: "Factor", why: "Write the left side as a product. A product is 0 exactly when one of its factors is 0, so each factor can be solved on its own.", before: X.eq(ptree, X.ZERO), after: X.eq(factored, X.ZERO) });
   }
   const exact = [], approx = [];
   let complete = true;
+  // steps for each factor are shown in the order the factors appear in the factored form
+  const factText = toText(factored), buckets = [];
   for (const { poly: f, mult } of fq.factors) {
     S.checkTime && S.checkTime();
     const d = f.length - 1;
     const ft = polyTree(f, x);
+    const bucket = [], ftText = toText(ft), pos = factText.indexOf(ftText.includes(" ") ? "(" + ftText + ")" : ftText);
+    buckets.push({ pos: pos < 0 ? Infinity : pos, bucket });
+    log = { add: (st) => { bucket.push(st); return st; } };
     if (d === 1) {
       const r = X.num(Q.div(Q.neg(f[0]), f[1]));
       exact.push({ tree: r, multiplicity: mult, real: true, form: "linear" });
-      log.add({ rule: "solve.poly.linear-factor", title: `Solve ${toText(ft)} = 0`, why: mult > 1 ? `This factor appears ${mult} times, so the root has multiplicity ${mult}.` : "A linear factor gives one root.", before: X.eq(ft, X.ZERO), after: X.eq(X.sym(x), r) });
+      const bare = ft === X.sym(x);
+      const note = mult > 1 ? ` The factor appears ${mult} times, so this is a repeated root.` : "";
+      if (!(S.quietLinear && deg === 1)) log.add({ rule: "solve.poly.linear-factor", title: bare ? `The factor ${x} gives ${x} = 0` : `Solve ${toText(ft)} = 0`, why: (bare ? `${x} = 0 makes the product 0.` : linearWhy(f, x)) + note, before: bare ? null : X.eq(ft, X.ZERO), after: X.eq(X.sym(x), r) });
       continue;
     }
     if (d === 2) {
@@ -62,7 +79,7 @@ export function solveUPoly(p, x, S) {
       const sd = C(X.sqrt(Dt), domain);
       const den = X.num(Q.mul(Q.TWO, c2));
       const r1 = tidy(X.div(X.sub(X.num(Q.neg(c1)), sd), den), domain), r2 = tidy(X.div(X.add(X.num(Q.neg(c1)), sd), den), domain);
-      log.add({ rule: "solve.quadratic.formula", title: "Apply the quadratic formula", why: "x = (-b +- sqrt(D)) / (2a).", before: X.eq(ft, X.ZERO), after: X.or(X.eq(X.sym(x), r1), X.eq(X.sym(x), r2)) });
+      log.add({ rule: "solve.quadratic.formula", title: "Apply the quadratic formula", why: `${x} = (-b +- sqrt(D)) / (2a) = (${Q.toString(Q.neg(c1))} +- sqrt(${Q.toString(D)})) / ${Q.toString(Q.mul(Q.TWO, c2))}.`, before: X.eq(ft, X.ZERO), after: X.or(X.eq(X.sym(x), r1), X.eq(X.sym(x), r2)) });
       for (const r of [r1, r2]) exact.push({ tree: r, multiplicity: mult, real: !Q.isNeg(D), form: "quadratic" });
       continue;
     }
@@ -90,6 +107,7 @@ export function solveUPoly(p, x, S) {
       for (const r of cr) approx.push({ value: r.re, im: r.im, approx: { value: `${r.approx.re.value} ${r.im < 0 ? "-" : "+"} ${Math.abs(r.im).toPrecision(15)}i`, digits: 15, requested: digits, errorBound: null, method: "Aberth-Ehrlich (double precision, not certified)", iterations: 0, converged: true }, multiplicity: mult, complex: true, factor: ft });
     }
   }
+  for (const b of buckets.sort((u, v) => u.pos - v.pos)) for (const st of b.bucket) mainLog.add(st);
   const realCount = P.countRealRoots(p);
   return { exact, approx, complete, realCount, degree: deg, factored };
 }

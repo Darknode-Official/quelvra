@@ -17,6 +17,7 @@ import * as X from "../expr.js";
 import { toText } from "../print.js";
 import { register, toContractVerification, unsupported } from "../orchestrate.js";
 import { limit as limitOf, verifyLimit, setPrinter as setLimitPrinter } from "../calc/limit.js";
+import { limitSteps } from "../calc/limit-steps.js";
 import { seriesTree, verifySeries } from "../calc/series.js";
 import { sumCompute, verifySum, productCompute, verifyProduct, setPrinter as setSumPrinter } from "../calc/sum.js";
 import { detectRecurrence, solveRecurrence, verifyRecurrence, setPrinter as setRecurPrinter } from "../calc/recur.js";
@@ -37,6 +38,12 @@ const pass = (e) => {
 };
 
 // ---------------------------------------------------------------- limits
+const METHOD_WHY = {
+  continuity: "The function is continuous at the point, so the limit is its value there.",
+  series: "Each part was replaced by its series expansion near the point; the leading terms give the limit.",
+  gruntz: "The fastest-growing parts of the function were compared (Gruntz's algorithm); they decide the limit.",
+  "one-sided": "The limit from each side was found separately.",
+};
 register({
   id: "calc.limit", kinds: ["limit"], priority: 10,
   run(node, card, env) {
@@ -49,6 +56,12 @@ register({
       return { answers: [{ kind: "none", tree: X.UNDEF, label: "The limit does not exist", reason: r.reason }], solutionStatus: "exact", note: r.reason, extra: { method: r.method }, verify };
     }
     const notes = r.result && r.result.notes ? r.result.notes : [];
+    // textbook steps (substitute / factor and cancel / L'Hopital / divide by the highest power) when
+    // that route reaches the same value; otherwise one note naming the method that was used
+    let shown = [];
+    try { shown = limitSteps(u, x, to, dir, r.value); } catch (e) { if (e && e.code === "TIMEOUT") throw e; shown = []; }
+    if (shown.length) for (const s of shown) env.log.add(s);
+    else env.log.add({ rule: "lim.series", title: "Find the limit from the leading behaviour", why: METHOD_WHY[String(r.method).split("+")[0]] || "The limit was found from the leading behaviour of the function near the point.", before: X.limit(u, x, to, dir), after: r.value, kind: "equivalent" });
     return { answers: [{ kind: "exact", tree: r.value }], solutionStatus: "exact", note: notes.join(" "), extra: { method: r.method }, verify };
   },
 });

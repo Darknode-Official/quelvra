@@ -29,7 +29,7 @@ export const CORPUS = [
   ["linear", "2x + 3 = 7", { roots: ["2"] }], ["linear", "3(x - 2) = 2x + 5", { roots: ["11"] }], ["linear", "x/3 + 1 = 5", { roots: ["12"] }],
   ["linear", "0.5x - 2 = 1.5", { roots: ["7"] }], ["linear", "5 - 2x = 3x + 20", { roots: ["-3"] }], ["linear", "x + 1 = x + 2", { none: true }],
   ["linear", "a number plus 7 is 19", { roots: ["12"] }], ["linear", "twice a number minus 3 is 11", { roots: ["7"] }],
-  ["linear", "the sum of three consecutive integers is 72", { roots: ["23"], var: "n" }], ["linear", "solve a x + b = c for x", { roots: ["(c - b)/a"] }],
+  ["linear", "the sum of three consecutive integers is 72", { system: { a: "23", b: "24", c: "25" } }], ["linear", "solve a x + b = c for x", { roots: ["(c - b)/a"] }],
 
   // ---------- quadratics ----------
   ["quad", "x^2 - 5x + 6 = 0", { roots: ["2", "3"] }], ["quad", "x^2 = 2", { roots: ["sqrt(2)", "-sqrt(2)"] }], ["quad", "x^2 + 1 = 0", { none: true }],

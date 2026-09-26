@@ -227,6 +227,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .ans-math { font-size: 1.55rem; overflow-x: auto; max-width: 100%; min-width: 0; flex: 1 1 240px; padding: 4px 0; }
 .ans-math math { font-size: inherit; }
 .ans-unit { margin-left: 0.4em; font-size: 0.8em; color: var(--txt-2); }
+.ans-values { display: flex; flex-wrap: wrap; align-items: baseline; }
+.ans-var { font-style: italic; }
+.ans-sep { color: var(--txt-2); margin-right: 0.4em; white-space: pre; }
 .ans-label { font-size: .8rem; color: var(--mut); width: 100%; }
 .ans-tools { display: flex; gap: 6px; flex-wrap: wrap; }
 .approx { font-family: var(--mono); font-size: 1rem; word-break: break-all; }
