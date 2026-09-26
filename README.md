@@ -3,7 +3,7 @@
 An offline math engine that shows an answer only after checking it independently.
 If it cannot prove an answer, it says so instead of guessing.
 
-Live: [darknode.ai/quelvra](https://darknode.ai/quelvra/)
+Live: [quelvra.onrender.com](https://quelvra.onrender.com/) and [darknode.ai/quelvra](https://darknode.ai/quelvra/)
 
 ## What it does
 
@@ -48,7 +48,7 @@ This is a **Static Site** on Render: no server, since all math runs in the brows
 - Rewrite: `/*` to `/index.html`
 
 The page only runs on allowed hostnames (see the first script in `public/index.html`).
-Add the Render hostname there before the first deploy.
+The Render site is https://quelvra.onrender.com/.
 
 ## License
 
