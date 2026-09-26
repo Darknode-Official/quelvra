@@ -80,6 +80,14 @@ const WHOLE_ONLY = new Set(["li", "Si", "Ci", "Shi", "Chi", "Ei", "erfi", "erfc"
     "modinv", "powmod", "binompdf", "binomcdf", "geompdf", "geomcdf", "poissonpdf", "poissoncdf", "hypergeompdf", "normalpdf", "normalcdf",
     "invnorm", "pstdev", "pvariance", "quartiles", "iqr", "datarange", "zscore", "corr", "linreg", "tobase", "frombase",
     "polydiv", "polyrem", "polygcd", "coeff", "discriminant", "vertex", "wmean", "circle", "linedist", "rootsum", "rootprod", "diffat", "dblint", "grad", "solvein", "polar"]);
+// ---- advanced continuous commands (engine/advanced/): bracket-only, whole-word names ----
+import { ADVANCED_CONTINUOUS_COMMANDS, ADVANCED_CONTINUOUS_FUNCTIONS } from "./advanced/names.js";
+for (const n of [...ADVANCED_CONTINUOUS_COMMANDS, ...ADVANCED_CONTINUOUS_FUNCTIONS]) { FUNCTIONS.add(n); CALL_ONLY.add(n); WHOLE_ONLY.add(n); }
+// ---- end advanced continuous commands ----
+// advanced discrete commands (engine/discrete/names.js; strategies/advanced-discrete.js): call-form
+// names and argument helpers, recognised as whole identifiers only
+import { ADV_DISCRETE_NAMES } from "./discrete/names.js";
+for (const w of ADV_DISCRETE_NAMES) { FUNCTIONS.add(w); WHOLE_ONLY.add(w); }
 const WORDS = [...FUNCTIONS, ...Object.keys(ALIASES), ...GREEK, ...Object.keys(CONSTS), ...KEYWORDS]
   .filter((w) => w.length > 1 && !WHOLE_ONLY.has(w))
   .sort((a, b) => b.length - a.length);

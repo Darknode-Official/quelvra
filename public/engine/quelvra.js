@@ -19,9 +19,13 @@ import { solveResearch } from "./strategies/research.js";
 import * as NUM from "./numeric.js";
 import * as U from "./units.js";
 import { solveLogic } from "./logic.js";
+import { translateAdvancedDiscrete } from "./discrete/lang.js";
 
 export const loadErrors = [];
 const OPTIONAL = ["./strategies/solve.js", "./strategies/integrate.js", "./strategies/calculus.js", "./strategies/analysis.js"];
+// advanced continuous commands (engine/advanced/, strategies/advanced-continuous.js)
+OPTIONAL.push("./strategies/advanced-continuous.js");
+OPTIONAL.push("./strategies/advanced-discrete.js"); // advanced discrete commands
 for (const m of OPTIONAL) {
   try { await import(m); } catch (e) { if (!/Cannot find module|Failed to fetch|ERR_MODULE_NOT_FOUND|404/.test(String(e && (e.code || e.message)))) loadErrors.push({ module: m, message: String(e && e.message) }); }
 }
@@ -57,8 +61,9 @@ export function solve(input, options = {}) {
     const res = solveResearch(text, { onProgress: options.onProgressDetail, timeMs: options.timeLimit });
     if (res) return finishResearch(res, options);
   }
-  // propositional logic and finite-set operations ("truth table of p and q", "{1, 2} union {3}")
-  if (typeof text === "string") {
+  // propositional logic and finite-set operations ("truth table of p and q", "{1, 2} union {3}");
+  // the advanced discrete engine takes the requests it recognises (richer, separately verified answers)
+  if (typeof text === "string" && !translateAdvancedDiscrete(text)) {
     const lg = solveLogic(text);
     if (lg) {
       if (lg.verification.status !== "passed") return refusal(text, "Quelvra computed an answer but could not verify it, so it is withheld");

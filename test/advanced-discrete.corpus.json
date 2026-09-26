@@ -1,0 +1,3254 @@
+[
+ {
+  "area": "seq",
+  "input": "rsolve(a(n) = 5a(n-1) - 6a(n-2), a(0) = 1, a(1) = 4)",
+  "expect": [
+   [
+    "seq",
+    "a(n)",
+    "n",
+    0,
+    [
+     1,
+     4,
+     14,
+     46,
+     146,
+     454,
+     1394,
+     4246,
+     12866,
+     38854,
+     117074,
+     352246
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "solve the recurrence a_n = a_{n-1} + a_{n-2} with a_0 = 0, a_1 = 1",
+  "expect": [
+   [
+    "seq",
+    "a(n)",
+    "n",
+    0,
+    [
+     0,
+     1,
+     1,
+     2,
+     3,
+     5,
+     8,
+     13,
+     21,
+     34,
+     55,
+     89
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "solve the recurrence relation a_n = 3a_{n-1} - 2a_{n-2}, a_0 = 1, a_1 = 3",
+  "expect": [
+   [
+    "seq",
+    "a(n)",
+    "n",
+    0,
+    [
+     1,
+     3,
+     7,
+     15,
+     31,
+     63,
+     127,
+     255,
+     511,
+     1023,
+     2047,
+     4095
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "solve the recurrence a(n) = 2a(n-1) + 1, a(0) = 3",
+  "expect": [
+   [
+    "seq",
+    "a(n)",
+    "n",
+    0,
+    [
+     3,
+     7,
+     15,
+     31,
+     63,
+     127,
+     255,
+     511,
+     1023,
+     2047,
+     4095,
+     8191
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "rsolve(a(n) = 4a(n-1) - 4a(n-2), a(0) = 1, a(1) = 6)",
+  "expect": [
+   [
+    "seq",
+    "a(n)",
+    "n",
+    0,
+    [
+     1,
+     6,
+     20,
+     56,
+     144,
+     352,
+     832,
+     1920,
+     4352,
+     9728,
+     21504,
+     47104
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "solve the recurrence a_n = a_{n-1} + n, a_0 = 0",
+  "expect": [
+   [
+    "seq",
+    "a(n)",
+    "n",
+    0,
+    [
+     0,
+     1,
+     3,
+     6,
+     10,
+     15,
+     21,
+     28,
+     36,
+     45,
+     55,
+     66
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "rsolve(a(n) = 2a(n-1) + 3^n, a(0) = 1)",
+  "expect": [
+   [
+    "seq",
+    "a(n)",
+    "n",
+    0,
+    [
+     1,
+     5,
+     19,
+     65,
+     211,
+     665,
+     2059,
+     6305,
+     19171,
+     58025,
+     175099,
+     527345
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "solve the recurrence a(n) = 6a(n-1) - 11a(n-2) + 6a(n-3) with a(0) = 2, a(1) = 5, a(2) = 15",
+  "expect": [
+   [
+    "seq",
+    "a(n)",
+    "n",
+    0,
+    [
+     2,
+     5,
+     15,
+     47,
+     147,
+     455,
+     1395,
+     4247,
+     12867,
+     38855,
+     117075,
+     352247
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "solve the recurrence relation a_n = 2a_{n-1} + 2^n, a_0 = 1",
+  "expect": [
+   [
+    "seq",
+    "a(n)",
+    "n",
+    0,
+    [
+     1,
+     4,
+     12,
+     32,
+     80,
+     192,
+     448,
+     1024,
+     2304,
+     5120,
+     11264,
+     24576
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "rsolve(a(n) = a(n-1) + 2a(n-2), a(0) = 2, a(1) = 1)",
+  "expect": [
+   [
+    "seq",
+    "a(n)",
+    "n",
+    0,
+    [
+     2,
+     1,
+     5,
+     7,
+     17,
+     31,
+     65,
+     127,
+     257,
+     511,
+     1025,
+     2047
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "genfunc(a(n) = a(n-1) + a(n-2), a(0) = 0, a(1) = 1)",
+  "expect": [
+   [
+    "eq",
+    "generating function",
+    "-x/(x**2 + x - 1)"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "generating function of the sequence a(n) = 3a(n-1), a(0) = 2",
+  "expect": [
+   [
+    "eq",
+    "generating function",
+    "-2/(3*x - 1)"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "find the generating function for a_n = 2^n + 1",
+  "expect": [
+   [
+    "eq",
+    "generating function",
+    "(2 - 3*x)/((x - 1)*(2*x - 1))"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "genfunc(n^2, n)",
+  "expect": [
+   [
+    "eq",
+    "generating function",
+    "-x*(x + 1)/(x - 1)**3"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "ordinary generating function of a(n) = n + 1",
+  "expect": [
+   [
+    "eq",
+    "generating function",
+    "(x - 1)**(-2)"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "genfunc(a(n) = 2a(n-1) + 1, a(0) = 0)",
+  "expect": [
+   [
+    "eq",
+    "generating function",
+    "x/((x - 1)*(2*x - 1))"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "coefficient of x^10 in 1/(1-x-x^2)",
+  "expect": [
+   [
+    "eq",
+    "coefficient",
+    "89"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "find the coefficient of x^5 in (1+x)^8",
+  "expect": [
+   [
+    "eq",
+    "coefficient",
+    "56"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "coefficient(1/((1-x)(1-x^2)), x, 7)",
+  "expect": [
+   [
+    "eq",
+    "coefficient",
+    "4"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "coefficient of x^6 in 1/(1-x)^3",
+  "expect": [
+   [
+    "eq",
+    "coefficient",
+    "28"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "coefficient of x^4 in (1+2x)^5 (1-x)^2",
+  "expect": [
+   [
+    "eq",
+    "coefficient",
+    "-40"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "coefficient of x^9 in x^2/(1-2x)",
+  "expect": [
+   [
+    "eq",
+    "coefficient",
+    "128"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "findsequence(1, 4, 9, 16, 25)",
+  "expect": [
+   [
+    "eq",
+    "formula",
+    "(n+1)^2"
+   ],
+   [
+    "eq",
+    "next term",
+    "36"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "find the next term in the sequence 2, 6, 12, 20, 30",
+  "expect": [
+   [
+    "eq",
+    "next term",
+    "42"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "identify the sequence 1, 1, 2, 3, 5, 8, 13, 21",
+  "expect": [
+   [
+    "eq",
+    "next term",
+    "34"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "what is the nth term of 3, 7, 11, 15, 19",
+  "expect": [
+   [
+    "eq",
+    "formula",
+    "4n+3"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "find the next term of 2, 6, 18, 54, 162",
+  "expect": [
+   [
+    "eq",
+    "next term",
+    "486"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "findsequence(1, 3)",
+  "expect": [
+   [
+    "refuse"
+   ]
+  ]
+ },
+ {
+  "area": "seq",
+  "input": "next term of 1, 8, 27, 64, 125, 216",
+  "expect": [
+   [
+    "eq",
+    "next term",
+    "343"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "degrees({1-2, 2-3, 3-1, 3-4})",
+  "expect": [
+   [
+    "eq",
+    "degree sequence",
+    "3, 2, 2, 1"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "find the degree of each vertex in the graph with edges A-B, B-C, C-D, D-A, A-C",
+  "expect": [
+   [
+    "eq",
+    "degree sequence",
+    "3, 3, 2, 2"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "components({1-2, 2-3, 4-5, 6-7, 7-8, 8-6})",
+  "expect": [
+   [
+    "eq",
+    "components",
+    "3"
+   ],
+   [
+    "eq",
+    "connected",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "is the graph with edges 1-2, 2-3, 3-4, 4-1 connected",
+  "expect": [
+   [
+    "eq",
+    "connected",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "shortestpath({A-B:4, A-C:2, B-C:1, B-D:5, C-D:8, C-E:10, D-E:2, D-F:6, E-F:3}, A, F)",
+  "expect": [
+   [
+    "eq",
+    "distance",
+    "13"
+   ],
+   [
+    "path",
+    "path",
+    [
+     [
+      "A",
+      "B",
+      4
+     ],
+     [
+      "A",
+      "C",
+      2
+     ],
+     [
+      "B",
+      "C",
+      1
+     ],
+     [
+      "B",
+      "D",
+      5
+     ],
+     [
+      "C",
+      "D",
+      8
+     ],
+     [
+      "C",
+      "E",
+      10
+     ],
+     [
+      "D",
+      "E",
+      2
+     ],
+     [
+      "D",
+      "F",
+      6
+     ],
+     [
+      "E",
+      "F",
+      3
+     ]
+    ],
+    false,
+    "A",
+    "F",
+    13
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "find the shortest path from A to E in the graph with edges A-B:4, A-C:2, B-C:1, B-D:5, C-D:8, C-E:10, D-E:2, D-F:6, E-F:3",
+  "expect": [
+   [
+    "eq",
+    "distance",
+    "10"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "shortest path from 1 to 4 in the graph 1-2, 2-3, 3-4, 1-5, 5-4, 2-6",
+  "expect": [
+   [
+    "eq",
+    "distance",
+    "2"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "shortestpath({s->a:2, s->b:5, a->b:1, b->t:2, a->t:6}, s, t)",
+  "expect": [
+   [
+    "eq",
+    "distance",
+    "5"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "mst({A-B:4, A-C:2, B-C:1, B-D:5, C-D:8, C-E:10, D-E:2, D-F:6, E-F:3})",
+  "expect": [
+   [
+    "eq",
+    "total weight",
+    "13"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "find the minimum spanning tree of the graph with edges 1-2:7, 1-4:5, 2-3:8, 2-4:9, 2-5:7, 3-5:5, 4-5:15, 4-6:6, 5-6:8, 5-7:9, 6-7:11",
+  "expect": [
+   [
+    "eq",
+    "total weight",
+    "39"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "number of spanning trees of K5",
+  "expect": [
+   [
+    "eq",
+    "spanning trees",
+    "125"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "spanningtrees({1-2, 2-3, 3-4, 4-1, 1-3})",
+  "expect": [
+   [
+    "eq",
+    "spanning trees",
+    "8"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "how many spanning trees does K3,3 have",
+  "expect": [
+   [
+    "eq",
+    "spanning trees",
+    "81"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "number of spanning trees of the Petersen graph",
+  "expect": [
+   [
+    "eq",
+    "spanning trees",
+    "2000"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "is the graph with edges 1-2, 2-3, 3-4, 4-1 bipartite",
+  "expect": [
+   [
+    "eq",
+    "bipartite",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "bipartite({1-2, 2-3, 3-1})",
+  "expect": [
+   [
+    "eq",
+    "bipartite",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "is C7 bipartite",
+  "expect": [
+   [
+    "eq",
+    "bipartite",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "is Q3 bipartite",
+  "expect": [
+   [
+    "eq",
+    "bipartite",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "does the graph with edges A-B, A-B, A-C, A-C, A-D, B-D, C-D have an Euler path",
+  "expect": [
+   [
+    "eq",
+    "euler path",
+    "no"
+   ],
+   [
+    "eq",
+    "euler circuit",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "eulerpath({1-2, 2-3, 3-4, 4-1, 1-3})",
+  "expect": [
+   [
+    "eq",
+    "euler path",
+    "yes"
+   ],
+   [
+    "eq",
+    "euler circuit",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "does K5 have an Euler circuit",
+  "expect": [
+   [
+    "eq",
+    "euler circuit",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "find an Euler circuit in the graph with edges 1-2, 2-3, 3-1, 1-4, 4-5, 5-1",
+  "expect": [
+   [
+    "eq",
+    "euler circuit",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "does the Petersen graph have a Hamiltonian cycle",
+  "expect": [
+   [
+    "eq",
+    "hamiltonian cycle",
+    "no"
+   ],
+   [
+    "eq",
+    "hamiltonian path",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "hamiltonian({1-2, 2-3, 3-4, 4-5, 5-1, 1-3})",
+  "expect": [
+   [
+    "eq",
+    "hamiltonian cycle",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "is there a Hamiltonian path in the graph with edges 1-2, 1-3, 1-4",
+  "expect": [
+   [
+    "eq",
+    "hamiltonian path",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "does K_{2,3} have a Hamiltonian cycle",
+  "expect": [
+   [
+    "eq",
+    "hamiltonian cycle",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "chromatic number of the Petersen graph",
+  "expect": [
+   [
+    "eq",
+    "chromatic number",
+    "3"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "chromaticnumber({1-2, 2-3, 3-4, 4-5, 5-1})",
+  "expect": [
+   [
+    "eq",
+    "chromatic number",
+    "3"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "what is the chromatic number of K4",
+  "expect": [
+   [
+    "eq",
+    "chromatic number",
+    "4"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "chromatic number of the wheel W6",
+  "expect": [
+   [
+    "eq",
+    "chromatic number",
+    "3"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "chromatic polynomial of C4",
+  "expect": [
+   [
+    "eq",
+    "chromatic polynomial",
+    "k**4 - 4*k**3 + 6*k**2 - 3*k"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "chromaticpoly({1-2, 2-3, 3-1, 3-4})",
+  "expect": [
+   [
+    "eq",
+    "chromatic polynomial",
+    "k**4 - 4*k**3 + 5*k**2 - 2*k"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "find the chromatic polynomial of K4",
+  "expect": [
+   [
+    "eq",
+    "chromatic polynomial",
+    "k**4 - 6*k**3 + 11*k**2 - 6*k"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "is K5 planar",
+  "expect": [
+   [
+    "eq",
+    "planar",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "is K3,3 planar",
+  "expect": [
+   [
+    "eq",
+    "planar",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "is Q3 planar",
+  "expect": [
+   [
+    "eq",
+    "planar",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "planar({1-2, 1-3, 1-4, 2-3, 2-4, 3-4})",
+  "expect": [
+   [
+    "eq",
+    "planar",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "is the Petersen graph planar",
+  "expect": [
+   [
+    "eq",
+    "planar",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "maxflow({s->a:10, s->b:5, a->b:15, a->t:10, b->t:10}, s, t)",
+  "expect": [
+   [
+    "eq",
+    "max flow",
+    "15"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "find the maximum flow from s to t in the network s->a:16, s->c:13, a->b:12, c->a:4, b->c:9, c->d:14, d->b:7, b->t:20, d->t:4",
+  "expect": [
+   [
+    "eq",
+    "max flow",
+    "23"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "toposort({a->b, a->c, b->d, c->d, d->e})",
+  "expect": [
+   [
+    "topo",
+    "topological order",
+    [
+     [
+      "a",
+      "b"
+     ],
+     [
+      "a",
+      "c"
+     ],
+     [
+      "b",
+      "d"
+     ],
+     [
+      "c",
+      "d"
+     ],
+     [
+      "d",
+      "e"
+     ]
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "topological sort of the directed graph 5->11, 7->11, 7->8, 3->8, 3->10, 11->2, 11->9, 11->10, 8->9",
+  "expect": [
+   [
+    "topo",
+    "topological order",
+    [
+     [
+      5,
+      11
+     ],
+     [
+      7,
+      11
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      3,
+      8
+     ],
+     [
+      3,
+      10
+     ],
+     [
+      11,
+      2
+     ],
+     [
+      11,
+      9
+     ],
+     [
+      11,
+      10
+     ],
+     [
+      8,
+      9
+     ]
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "toposort({1->2, 2->3, 3->1})",
+  "expect": [
+   [
+    "eq",
+    "acyclic",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "isomorphic({1-2, 2-3, 3-4, 4-1}, {a-c, c-b, b-d, d-a})",
+  "expect": [
+   [
+    "eq",
+    "isomorphic",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "are the graphs {1-2, 2-3, 3-4, 4-5, 5-6, 6-1} and {1-2, 2-3, 3-1, 4-5, 5-6, 6-4} isomorphic",
+  "expect": [
+   [
+    "eq",
+    "isomorphic",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "is the Petersen graph isomorphic to the graph {0-2, 2-4, 4-1, 1-3, 3-0, 0-5, 1-6, 2-7, 3-8, 4-9, 5-6, 6-7, 7-8, 8-9, 9-5}",
+  "expect": [
+   [
+    "eq",
+    "isomorphic",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "graph",
+  "input": "degrees of the graph with adjacency matrix [[0,1,1,0],[1,0,1,1],[1,1,0,1],[0,1,1,0]]",
+  "expect": [
+   [
+    "eq",
+    "degree sequence",
+    "3, 3, 2, 2"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "truthtable(p -> q)",
+  "expect": [
+   [
+    "eq",
+    "true rows",
+    "3"
+   ],
+   [
+    "eq",
+    "classification",
+    "contingent"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "truth table of (p and q) or not r",
+  "expect": [
+   [
+    "eq",
+    "true rows",
+    "5"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "truthtable((p <-> q) and (p xor r))",
+  "expect": [
+   [
+    "eq",
+    "true rows",
+    "2"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "is p or not p a tautology",
+  "expect": [
+   [
+    "eq",
+    "classification",
+    "tautology"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "tautology(((p -> q) and (q -> r)) -> (p -> r))",
+  "expect": [
+   [
+    "eq",
+    "classification",
+    "tautology"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "is p and not p a contradiction",
+  "expect": [
+   [
+    "eq",
+    "classification",
+    "contradiction"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "is (p or q) and (not p or r) and not q and not r satisfiable",
+  "expect": [
+   [
+    "eq",
+    "satisfiable",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "satisfiable((p or q) and (not p or not q))",
+  "expect": [
+   [
+    "eq",
+    "satisfiable",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "is p -> q equivalent to not p or q",
+  "expect": [
+   [
+    "eq",
+    "equivalent",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "logicequiv(p -> q, q -> p)",
+  "expect": [
+   [
+    "eq",
+    "equivalent",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "are not (p and q) and not p or not q logically equivalent",
+  "expect": [
+   [
+    "eq",
+    "equivalent",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "is p -> q equivalent to not q -> not p",
+  "expect": [
+   [
+    "eq",
+    "equivalent",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "cnf((p and q) or r)",
+  "expect": [
+   [
+    "logic",
+    "cnf",
+    [
+     "p",
+     "q",
+     "r"
+    ],
+    [
+     1,
+     3,
+     5,
+     6,
+     7
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "convert p -> (q and r) to conjunctive normal form",
+  "expect": [
+   [
+    "logic",
+    "cnf",
+    [
+     "p",
+     "q",
+     "r"
+    ],
+    [
+     0,
+     1,
+     2,
+     3,
+     7
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "dnf(p xor q)",
+  "expect": [
+   [
+    "logic",
+    "dnf",
+    [
+     "p",
+     "q"
+    ],
+    [
+     1,
+     2
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "disjunctive normal form of (p -> q) and (q -> p)",
+  "expect": [
+   [
+    "logic",
+    "dnf",
+    [
+     "p",
+     "q"
+    ],
+    [
+     0,
+     3
+    ]
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "minsop(m(0, 1, 2, 5, 6, 7))",
+  "expect": [
+   [
+    "logic",
+    "minimal sop",
+    [
+     "a",
+     "b",
+     "c"
+    ],
+    [
+     0,
+     1,
+     2,
+     5,
+     6,
+     7
+    ],
+    []
+   ],
+   [
+    "eq",
+    "literals",
+    "6"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "minimize the boolean function f(a,b,c,d) = sum m(0, 2, 5, 7, 8, 10, 13, 15)",
+  "expect": [
+   [
+    "logic",
+    "minimal sop",
+    [
+     "a",
+     "b",
+     "c",
+     "d"
+    ],
+    [
+     0,
+     2,
+     5,
+     7,
+     8,
+     10,
+     13,
+     15
+    ],
+    []
+   ],
+   [
+    "eq",
+    "literals",
+    "4"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "minsop(m(1, 3, 7, 11, 15), d(0, 2, 5))",
+  "expect": [
+   [
+    "logic",
+    "minimal sop",
+    [
+     "a",
+     "b",
+     "c",
+     "d"
+    ],
+    [
+     1,
+     3,
+     7,
+     11,
+     15
+    ],
+    [
+     0,
+     2,
+     5
+    ]
+   ],
+   [
+    "eq",
+    "literals",
+    "4"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "simplify the boolean function F(a,b,c) = sum m(1, 3, 5, 7)",
+  "expect": [
+   [
+    "logic",
+    "minimal sop",
+    [
+     "a",
+     "b",
+     "c"
+    ],
+    [
+     1,
+     3,
+     5,
+     7
+    ],
+    []
+   ],
+   [
+    "eq",
+    "literals",
+    "1"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "simplify the boolean expression (a and b) or (a and not b)",
+  "expect": [
+   [
+    "logic",
+    "minimal sop",
+    [
+     "a",
+     "b"
+    ],
+    [
+     2,
+     3
+    ]
+   ],
+   [
+    "eq",
+    "literals",
+    "1"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "is the argument valid: p -> q, p, therefore q",
+  "expect": [
+   [
+    "eq",
+    "valid",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "validargument(p -> q, q; p)",
+  "expect": [
+   [
+    "eq",
+    "valid",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "is the argument p -> q, q -> r, therefore p -> r valid",
+  "expect": [
+   [
+    "eq",
+    "valid",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "logic",
+  "input": "premises p or q, not p; conclusion q. is it valid",
+  "expect": [
+   [
+    "eq",
+    "valid",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "{1, 2, 3} union {3, 4, 5}",
+  "expect": [
+   [
+    "set",
+    "result",
+    "{1, 2, 3, 4, 5}"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "{1, 2, 3, 4} intersect {3, 4, 5}",
+  "expect": [
+   [
+    "set",
+    "result",
+    "{3, 4}"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "let A = {1, 2, 3, 4} and B = {3, 4, 5}; find A - B",
+  "expect": [
+   [
+    "set",
+    "result",
+    "{1, 2}"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "symmetric difference of {1, 2, 3} and {2, 3, 4}",
+  "expect": [
+   [
+    "set",
+    "result",
+    "{1, 4}"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "complement of {1, 3} in {1, 2, 3, 4, 5}",
+  "expect": [
+   [
+    "set",
+    "result",
+    "{2, 4, 5}"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "power set of {a, b, c}",
+  "expect": [
+   [
+    "set",
+    "power set",
+    "{{}, {a}, {b}, {c}, {a, b}, {a, c}, {b, c}, {a, b, c}}"
+   ],
+   [
+    "eq",
+    "cardinality",
+    "8"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "powerset({1, 2})",
+  "expect": [
+   [
+    "set",
+    "power set",
+    "{{}, {1}, {2}, {1, 2}}"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "cartesian product of {1, 2} and {a, b, c}",
+  "expect": [
+   [
+    "set",
+    "result",
+    "{(1, a), (1, b), (1, c), (2, a), (2, b), (2, c)}"
+   ],
+   [
+    "eq",
+    "cardinality",
+    "6"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "{1, 2} x {3, 4}",
+  "expect": [
+   [
+    "set",
+    "result",
+    "{(1, 3), (1, 4), (2, 3), (2, 4)}"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "cardinality of {1, 2, 3, 2, 1}",
+  "expect": [
+   [
+    "eq",
+    "cardinality",
+    "3"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "(A union B) intersect C where A = {1, 2}, B = {2, 3}, C = {2, 3, 4}",
+  "expect": [
+   [
+    "set",
+    "result",
+    "{2, 3}"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "how many integers from 1 to 1000 are divisible by 3, 5 or 7",
+  "expect": [
+   [
+    "eq",
+    "count",
+    "543"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "how many integers from 1 to 100 are divisible by 2 or 3",
+  "expect": [
+   [
+    "eq",
+    "count",
+    "67"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "|A| = 30, |B| = 25, |A ∩ B| = 10, find |A ∪ B|",
+  "expect": [
+   [
+    "eq",
+    "count",
+    "45"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "|A| = 20, |B| = 30, |C| = 40, |A∩B| = 5, |A∩C| = 10, |B∩C| = 15, |A∩B∩C| = 3, find |A∪B∪C|",
+  "expect": [
+   [
+    "eq",
+    "count",
+    "63"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "how many integers from 1 to 1000 are not divisible by 2, 3 or 5",
+  "expect": [
+   [
+    "eq",
+    "count",
+    "266"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "is the relation R = {(1,1), (2,2), (3,3), (1,2), (2,1)} on {1, 2, 3} an equivalence relation",
+  "expect": [
+   [
+    "eq",
+    "equivalence relation",
+    "yes"
+   ],
+   [
+    "set",
+    "equivalence classes",
+    "{{1, 2}, {3}}"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "relation({(1,1), (1,2), (2,2), (2,3)}, {1, 2, 3})",
+  "expect": [
+   [
+    "eq",
+    "reflexive",
+    "no"
+   ],
+   [
+    "eq",
+    "symmetric",
+    "no"
+   ],
+   [
+    "eq",
+    "antisymmetric",
+    "yes"
+   ],
+   [
+    "eq",
+    "transitive",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "is the relation {(1,1), (2,2), (3,3), (1,2), (2,3), (1,3)} on {1, 2, 3} a partial order",
+  "expect": [
+   [
+    "eq",
+    "partial order",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "is R = {(1,2), (2,1)} on {1, 2} transitive",
+  "expect": [
+   [
+    "eq",
+    "transitive",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "Hasse diagram of the divisibility relation on {1, 2, 3, 4, 6, 12}",
+  "expect": [
+   [
+    "set",
+    "hasse edges",
+    "{(1, 2), (1, 3), (2, 4), (2, 6), (3, 6), (4, 12), (6, 12)}"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "equivalence classes of congruence mod 3 on {1, 2, 3, 4, 5, 6, 7}",
+  "expect": [
+   [
+    "set",
+    "equivalence classes",
+    "{{1, 4, 7}, {2, 5}, {3, 6}}"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "is f = {(1, a), (2, b), (3, a)} from {1, 2, 3} to {a, b} injective",
+  "expect": [
+   [
+    "eq",
+    "injective",
+    "no"
+   ],
+   [
+    "eq",
+    "surjective",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "func({(1,2), (2,3), (3,1)}, {1, 2, 3}, {1, 2, 3})",
+  "expect": [
+   [
+    "eq",
+    "bijective",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "is f(x) = x^2 mod 5 injective on {0, 1, 2, 3, 4}",
+  "expect": [
+   [
+    "eq",
+    "injective",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "compose f = {(1,2), (2,3), (3,1)} and g = {(1,3), (2,2), (3,1)}",
+  "expect": [
+   [
+    "set",
+    "composition",
+    "{(1, 1), (2, 3), (3, 2)}"
+   ]
+  ]
+ },
+ {
+  "area": "sets",
+  "input": "is f(x) = 3x mod 7 a bijection on {0, 1, 2, 3, 4, 5, 6}",
+  "expect": [
+   [
+    "eq",
+    "bijective",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "order of the permutation (1 2 3)(4 5)",
+  "expect": [
+   [
+    "eq",
+    "order",
+    "6"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "sign of the permutation (1 3 5)(2 4)",
+  "expect": [
+   [
+    "eq",
+    "sign",
+    "-1"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "is (1 2)(3 4 5) even or odd",
+  "expect": [
+   [
+    "eq",
+    "parity",
+    "odd"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "write [2, 3, 1, 5, 4] in cycle notation",
+  "expect": [
+   [
+    "eq",
+    "cycles",
+    "(1 2 3)(4 5)"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "inverse of the permutation (1 2 3 4)",
+  "expect": [
+   [
+    "eq",
+    "inverse",
+    "(1 4 3 2)"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "compute the product (1 2 3)(2 3 4)",
+  "expect": [
+   [
+    "eq",
+    "product",
+    "(1 2)(3 4)"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "perm((1 3)(2 4 5))",
+  "expect": [
+   [
+    "eq",
+    "order",
+    "6"
+   ],
+   [
+    "eq",
+    "sign",
+    "-1"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "permcompose((1 2), (1 3))",
+  "expect": [
+   [
+    "eq",
+    "product",
+    "(1 3 2)"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "order of 4 in Z_10",
+  "expect": [
+   [
+    "eq",
+    "order",
+    "5"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "order of 3 mod 7",
+  "expect": [
+   [
+    "eq",
+    "order",
+    "6"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "order of 2 in (Z/11Z)*",
+  "expect": [
+   [
+    "eq",
+    "order",
+    "10"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "is U(8) cyclic",
+  "expect": [
+   [
+    "eq",
+    "cyclic",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "is U(10) cyclic",
+  "expect": [
+   [
+    "eq",
+    "cyclic",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "primitive roots mod 13",
+  "expect": [
+   [
+    "set",
+    "primitive roots",
+    "{2, 6, 7, 11}"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "find all generators of Z_12",
+  "expect": [
+   [
+    "set",
+    "generators",
+    "{1, 5, 7, 11}"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "subgroups of Z_12",
+  "expect": [
+   [
+    "eq",
+    "number of subgroups",
+    "6"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "unitgroup(15)",
+  "expect": [
+   [
+    "eq",
+    "group order",
+    "8"
+   ],
+   [
+    "eq",
+    "cyclic",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "list all abelian groups of order 72",
+  "expect": [
+   [
+    "eq",
+    "number of groups",
+    "6"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "how many abelian groups of order 360 are there",
+  "expect": [
+   [
+    "eq",
+    "number of groups",
+    "6"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "abeliangroups(16)",
+  "expect": [
+   [
+    "eq",
+    "number of groups",
+    "5"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "in GF(7) compute 3/5",
+  "expect": [
+   [
+    "eq",
+    "result",
+    "2"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "inverse of 3 in GF(11)",
+  "expect": [
+   [
+    "eq",
+    "result",
+    "4"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "in GF(2^3) with modulus x^3 + x + 1 multiply x^2 + 1 and x^2 + x",
+  "expect": [
+   [
+    "eq",
+    "result",
+    "x + 1"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "inverse of x^2 + 1 in GF(2)[x]/(x^3 + x + 1)",
+  "expect": [
+   [
+    "eq",
+    "result",
+    "x"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "gfcalc((x+1)^5, 2, x^3 + x + 1)",
+  "expect": [
+   [
+    "eq",
+    "result",
+    "x"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "in GF(9) = GF(3)[x]/(x^2 + 1) compute (x + 2)(2x + 1)",
+  "expect": [
+   [
+    "eq",
+    "result",
+    "2*x"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "factor x^4 + 1 over GF(3)",
+  "expect": [
+   [
+    "eq",
+    "irreducible factors",
+    "x**2 + x + 2 ; x**2 + 2*x + 2"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "factormod(x^5 - x, 5)",
+  "expect": [
+   [
+    "eq",
+    "irreducible factors",
+    "x ; x + 1 ; x + 2 ; x + 3 ; x + 4"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "factorise x^3 + x + 1 modulo 2",
+  "expect": [
+   [
+    "eq",
+    "irreducible factors",
+    "x**3 + x + 1"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "factor x^6 + x^5 + x^4 + x^3 + x^2 + x + 1 mod 2",
+  "expect": [
+   [
+    "eq",
+    "irreducible factors",
+    "x**3 + x + 1 ; x**3 + x**2 + 1"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "factormod(x^4 + 4, 7)",
+  "expect": [
+   [
+    "eq",
+    "irreducible factors",
+    "x**2 + 2*x + 2 ; x**2 + 5*x + 2"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "is x^4 + x + 1 irreducible over GF(2)",
+  "expect": [
+   [
+    "eq",
+    "irreducible",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "is x^2 + 1 irreducible over Z_3",
+  "expect": [
+   [
+    "eq",
+    "irreducible",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "irreducible(x^4 + x^2 + 1, 2)",
+  "expect": [
+   [
+    "eq",
+    "irreducible",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "is x^3 - 2 irreducible over Q",
+  "expect": [
+   [
+    "eq",
+    "irreducible",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "is x^4 + 4 irreducible over Q",
+  "expect": [
+   [
+    "eq",
+    "irreducible",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "gcd of 11 + 3i and 1 + 8i in the Gaussian integers",
+  "expect": [
+   [
+    "eq",
+    "gcd",
+    "2+1*i"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "gaussgcd(4 + 7i, 1 + 3i)",
+  "expect": [
+   [
+    "eq",
+    "gcd",
+    "2+1*i"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "gaussfactor(5)",
+  "expect": [
+   [
+    "eq",
+    "norms",
+    "5, 5"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "factor 3 + 4i in Z[i]",
+  "expect": [
+   [
+    "eq",
+    "norms",
+    "5, 5"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "is Z_2[x]/(x^2 + x + 1) a field",
+  "expect": [
+   [
+    "eq",
+    "field",
+    "yes"
+   ],
+   [
+    "eq",
+    "number of elements",
+    "4"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "is Z_5[x]/(x^2 + 1) a field",
+  "expect": [
+   [
+    "eq",
+    "field",
+    "no"
+   ]
+  ]
+ },
+ {
+  "area": "algebra",
+  "input": "quotientring(x^2 + 1)",
+  "expect": [
+   [
+    "eq",
+    "field",
+    "no"
+   ],
+   [
+    "eq",
+    "integral domain",
+    "yes"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "maximize z = 3x + 5y subject to x <= 4, 2y <= 12, 3x + 2y <= 18, x >= 0, y >= 0",
+  "expect": [
+   [
+    "eq",
+    "optimal value",
+    "36"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "lp(maximize 3x + 2y, x + y <= 4, x + 3y <= 6, x >= 0, y >= 0)",
+  "expect": [
+   [
+    "eq",
+    "optimal value",
+    "12"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "minimize 2x + 3y subject to x + y >= 4, x + 3y >= 6, x >= 0, y >= 0",
+  "expect": [
+   [
+    "eq",
+    "optimal value",
+    "9"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "maximize 5x + 4y + 3z subject to 2x + 3y + z <= 5, 4x + y + 2z <= 11, 3x + 4y + 2z <= 8, x, y, z >= 0",
+  "expect": [
+   [
+    "eq",
+    "optimal value",
+    "13"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "maximize x + y subject to x + 2y <= 7, 3x + y <= 9, x >= 0, y >= 0",
+  "expect": [
+   [
+    "eq",
+    "optimal value",
+    "23/5"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "maximize x + y subject to x - y <= 1, x >= 0, y >= 0",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "unbounded"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "maximize x + y subject to x + y <= 1, x + y >= 3, x >= 0, y >= 0",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "infeasible"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "minimize 3x + 2y subject to x + y >= 2, x <= 3, y <= 3, x >= 0, y >= 0",
+  "expect": [
+   [
+    "eq",
+    "optimal value",
+    "4"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "maximize 5x + 4y subject to 6x + 4y <= 24, x + 2y <= 6, x >= 0, y >= 0, x and y integers",
+  "expect": [
+   [
+    "eq",
+    "optimal value",
+    "20"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "ilp(maximize 3x + 2y, 2x + 2y <= 9, 3x + y <= 11, x >= 0, y >= 0)",
+  "expect": [
+   [
+    "eq",
+    "optimal value",
+    "11"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "integer programming: maximize x + y subject to 2x + 3y <= 12, 2x + y <= 6, x >= 0, y >= 0",
+  "expect": [
+   [
+    "eq",
+    "optimal value",
+    "4"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "value of the zero-sum game with payoff matrix [[3, -1], [-2, 4]]",
+  "expect": [
+   [
+    "eq",
+    "value",
+    "1"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "matrixgame([[2, 3, 1], [4, 1, 2]])",
+  "expect": [
+   [
+    "eq",
+    "value",
+    "5/3"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "solve the matrix game [[1, -1], [-1, 1]]",
+  "expect": [
+   [
+    "eq",
+    "value",
+    "0"
+   ],
+   [
+    "eq",
+    "row strategy",
+    "(1/2, 1/2)"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "matrixgame([[4, 2, 3], [1, 0, -1], [5, 1, 2]])",
+  "expect": [
+   [
+    "eq",
+    "value",
+    "2"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "value of rock paper scissors game [[0, -1, 1], [1, 0, -1], [-1, 1, 0]]",
+  "expect": [
+   [
+    "eq",
+    "value",
+    "0"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "nash([[3, 0], [5, 1]], [[3, 5], [0, 1]])",
+  "expect": [
+   [
+    "eq",
+    "number of pure equilibria",
+    "1"
+   ],
+   [
+    "set",
+    "pure equilibria",
+    "{(R2, C2)}"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "find the Nash equilibria of the bimatrix game A = [[2, 0], [0, 1]], B = [[1, 0], [0, 2]]",
+  "expect": [
+   [
+    "eq",
+    "number of pure equilibria",
+    "2"
+   ],
+   [
+    "eq",
+    "mixed equilibrium",
+    "row (2/3, 1/3), column (1/3, 2/3)"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "nash equilibria of the game with A = [[1, -1], [-1, 1]] and B = [[-1, 1], [1, -1]]",
+  "expect": [
+   [
+    "eq",
+    "number of pure equilibria",
+    "0"
+   ],
+   [
+    "eq",
+    "mixed equilibrium",
+    "row (1/2, 1/2), column (1/2, 1/2)"
+   ]
+  ]
+ },
+ {
+  "area": "lp",
+  "input": "nash([[4, 1], [3, 2]], [[4, 3], [1, 2]])",
+  "expect": [
+   [
+    "eq",
+    "number of pure equilibria",
+    "2"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "rsa(p = 61, q = 53, e = 17)",
+  "expect": [
+   [
+    "eq",
+    "n",
+    "3233"
+   ],
+   [
+    "eq",
+    "phi(n)",
+    "3120"
+   ],
+   [
+    "eq",
+    "d",
+    "2753"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "RSA with p = 61, q = 53, e = 17: encrypt m = 65",
+  "expect": [
+   [
+    "eq",
+    "ciphertext",
+    "2790"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "decrypt c = 2790 with n = 3233 and d = 2753",
+  "expect": [
+   [
+    "eq",
+    "plaintext",
+    "65"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "RSA key generation with p = 11, q = 13, e = 7",
+  "expect": [
+   [
+    "eq",
+    "d",
+    "103"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "rsa(p = 17, q = 11, e = 7, m = 88)",
+  "expect": [
+   [
+    "eq",
+    "ciphertext",
+    "11"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "rsa(p = 61, q = 53, e = 12)",
+  "expect": [
+   [
+    "refuse"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "compute 4^13 mod 497",
+  "expect": [
+   [
+    "eq",
+    "result",
+    "445"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "modpow(123456789, 987654321, 1000000007)",
+  "expect": [
+   [
+    "eq",
+    "result",
+    "652541198"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "3^200 mod 13",
+  "expect": [
+   [
+    "eq",
+    "result",
+    "9"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "inverse of 17 mod 3120",
+  "expect": [
+   [
+    "eq",
+    "inverse",
+    "2753"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "multiplicative inverse of 3 modulo 11",
+  "expect": [
+   [
+    "eq",
+    "inverse",
+    "4"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "modinverse(6, 9)",
+  "expect": [
+   [
+    "refuse"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "discrete log of 9 base 2 mod 11",
+  "expect": [
+   [
+    "eq",
+    "x",
+    "6"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "solve 3^x ≡ 13 (mod 17)",
+  "expect": [
+   [
+    "eq",
+    "x",
+    "4"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "dlog(5, 8, 23)",
+  "expect": [
+   [
+    "eq",
+    "x",
+    "6"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "dlog(2, 3, 7)",
+  "expect": [
+   [
+    "eq",
+    "x",
+    "none"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "discrete logarithm of 17 to the base 3 modulo 1000003",
+  "expect": [
+   [
+    "eq",
+    "x",
+    "219145"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "Diffie-Hellman with p = 23, g = 5, a = 6, b = 15",
+  "expect": [
+   [
+    "eq",
+    "shared secret",
+    "2"
+   ],
+   [
+    "eq",
+    "A",
+    "8"
+   ],
+   [
+    "eq",
+    "B",
+    "19"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "diffiehellman(p = 97, g = 5, a = 36, b = 58)",
+  "expect": [
+   [
+    "eq",
+    "shared secret",
+    "75"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "decrypt c = 2790 using CRT with p = 61, q = 53, d = 2753",
+  "expect": [
+   [
+    "eq",
+    "plaintext",
+    "65"
+   ]
+  ]
+ },
+ {
+  "area": "crypto",
+  "input": "rsacrt(c = 855, p = 61, q = 53, d = 2753)",
+  "expect": [
+   [
+    "eq",
+    "plaintext",
+    "123"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "homology of the boundary of a tetrahedron",
+  "expect": [
+   [
+    "eq",
+    "betti numbers",
+    "1, 0, 1"
+   ],
+   [
+    "eq",
+    "euler characteristic",
+    "2"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "homology([1,2,3], [1,2,4], [1,3,4], [2,3,4])",
+  "expect": [
+   [
+    "eq",
+    "H2",
+    "Z"
+   ],
+   [
+    "eq",
+    "H1",
+    "0"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "homology of the torus",
+  "expect": [
+   [
+    "eq",
+    "betti numbers",
+    "1, 2, 1"
+   ],
+   [
+    "eq",
+    "H1",
+    "Z^2"
+   ],
+   [
+    "eq",
+    "euler characteristic",
+    "0"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "homology of the real projective plane",
+  "expect": [
+   [
+    "eq",
+    "H1",
+    "Z/2"
+   ],
+   [
+    "eq",
+    "H2",
+    "0"
+   ],
+   [
+    "eq",
+    "euler characteristic",
+    "1"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "homology of the Klein bottle",
+  "expect": [
+   [
+    "eq",
+    "H1",
+    "Z ⊕ Z/2"
+   ],
+   [
+    "eq",
+    "euler characteristic",
+    "0"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "betti numbers of the simplicial complex with facets {1,2}, {2,3}, {1,3}",
+  "expect": [
+   [
+    "eq",
+    "betti numbers",
+    "1, 1"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "homology([1,2,3], [3,4], [4,5], [5,3], [6,7])",
+  "expect": [
+   [
+    "eq",
+    "betti numbers",
+    "2, 1, 0"
+   ],
+   [
+    "eq",
+    "euler characteristic",
+    "1"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "euler characteristic of a polyhedron with 8 vertices, 12 edges and 6 faces",
+  "expect": [
+   [
+    "eq",
+    "euler characteristic",
+    "2"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "eulerchar(V = 20, E = 30, F = 12)",
+  "expect": [
+   [
+    "eq",
+    "euler characteristic",
+    "2"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "Betti numbers of the complex with triangles {1,3,5}, {1,3,6}, {1,4,5}, {1,4,6}, {2,3,5}, {2,3,6}, {2,4,5}, {2,4,6}",
+  "expect": [
+   [
+    "eq",
+    "betti numbers",
+    "1, 0, 1"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "homology of the Mobius band",
+  "expect": [
+   [
+    "eq",
+    "betti numbers",
+    "1, 1, 0"
+   ],
+   [
+    "eq",
+    "H1",
+    "Z"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "homology of the 2-sphere",
+  "expect": [
+   [
+    "eq",
+    "betti numbers",
+    "1, 0, 1"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "homology([1,2,3,4])",
+  "expect": [
+   [
+    "eq",
+    "betti numbers",
+    "1, 0, 0, 0"
+   ],
+   [
+    "eq",
+    "euler characteristic",
+    "1"
+   ]
+  ]
+ },
+ {
+  "area": "topology",
+  "input": "euler characteristic of the simplicial complex with facets {1,2,3}, {2,3,4}, {4,5}",
+  "expect": [
+   [
+    "eq",
+    "euler characteristic",
+    "1"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that n^3 - n is divisible by 6 for every integer n",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "proved"
+   ],
+   [
+    "status",
+    "exact"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that (a+b)^2 = a^2 + 2ab + b^2",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "proved"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that the sum of the first n odd numbers is n^2",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "proved"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that 1 + 2 + ... + n = n(n+1)/2",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "proved"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that 2^n > n^2 for all n >= 5",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "no counterexample found"
+   ],
+   [
+    "status",
+    "evidence"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that n^2 + n + 41 is prime for all n >= 0",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "disproved"
+   ],
+   [
+    "eq",
+    "counterexample",
+    "n = 40"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that there are infinitely many primes",
+  "expect": [
+   [
+    "refuse"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that sqrt(2) is irrational",
+  "expect": [
+   [
+    "refuse"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that p -> q is equivalent to not q -> not p",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "proved"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that n^5 - n is divisible by 5 for all integers n",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "proved"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that n^2 - n is divisible by 3 for all integers n",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "disproved"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that (x - 1)(x + 1) = x^2 + 1",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "disproved"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that the sum of k^3 for k = 1 to n is (n(n+1)/2)^2",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "proved"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that every group of prime order is cyclic",
+  "expect": [
+   [
+    "refuse"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that 3^n > 2^n + n for all n >= 2",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "no counterexample found"
+   ],
+   [
+    "status",
+    "evidence"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that for all x in {1, 2, 3, 4, 5}, x^2 < 30",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "proved"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that n! > 2^n for n >= 4",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "no counterexample found"
+   ]
+  ]
+ },
+ {
+  "area": "proof",
+  "input": "prove that 6 divides n(n+1)(n+2) for all integers n",
+  "expect": [
+   [
+    "eq",
+    "status",
+    "proved"
+   ]
+  ]
+ }
+]

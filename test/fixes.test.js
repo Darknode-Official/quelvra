@@ -61,3 +61,13 @@ test("finite series without the words arithmetic or geometric", () => {
   eq(ans("sum of first 20 terms of 3, 7, 11, ..."), "820");
   ok(!run("sum of the first 5 terms of 1, 2, 5, ...").ok, "neither arithmetic nor geometric: refused");
 });
+test("graph edges with a space-separated weight", () => {
+  const r = run("shortest path from A to D in graph A-B 1, B-D 2, A-C 4, C-D 1");
+  ok(r.verification.status === "passed");
+  ok(/distance = 3/.test(r.answers.map((a) => a.label + " = " + (a.tree ? toText(a.tree) : a.text)).join("; ")), "distance 3");
+});
+test("logic and set requests use the advanced discrete engine", () => {
+  const labels = (s) => run(s).answers.map((a) => a.label);
+  ok(labels("is p or not p a tautology").includes("classification"));
+  ok(labels("{1, 2, 3} union {3, 4, 5}").includes("cardinality"));
+});
