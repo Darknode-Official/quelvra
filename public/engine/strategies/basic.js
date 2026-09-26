@@ -8,7 +8,7 @@ import { toText } from "../print.js";
 import { diff } from "../calc/diff.js";
 import { equivalent, verifyDerivative, evalC } from "../verify.js";
 import { DISCRETE_NAMES } from "../discrete.js";
-import { register, toContractVerification, unsupported } from "../orchestrate.js";
+import { register, toContractVerification, unsupported, solve as orchestrateSolve } from "../orchestrate.js";
 import { rationalize, simplifyFull, expandTrig, expandLog, contractLog } from "../rules.js";
 
 let approxHook = null;
@@ -58,6 +58,33 @@ function gaussian(u, budget = { n: 0 }) {
 }
 const gmul = ([a, b], [c, d]) => [N.sub(N.mul(a, c), N.mul(b, d)), N.add(N.mul(a, d), N.mul(b, c))];
 
+// d/dx, integrals, limits, sums left unevaluated inside a larger expression ("d/dx (x^2) + 1"):
+// simplifying around them would only echo the input as an "answer", so those strategies decline
+const OPERATOR_KINDS = new Set(["deriv", "integral", "limit", "sum", "product"]);
+const hasOperator = (u) => OPERATOR_KINDS.has(u.k) || (u.args || []).some((a) => a && a.k && hasOperator(a));
+// Replace each embedded operator ("d/dx (x^2) + 1", "lim x->0 (sin(x)/x) + 2") by its value, each one
+// solved and independently verified on its own by the orchestrator. Indefinite integrals (+ C) and
+// answers that are not a single exact value are not substituted: the caller then declines.
+function evalOperators(u, env, depth = 0) {
+  if (depth > 3) return null;
+  if (OPERATOR_KINDS.has(u.k)) {
+    if (u.k === "integral" && u.args.length !== 4) return null;
+    if (hasOperator(u.args[0])) return null;
+    env.checkTime();
+    const left = Math.max(200, env.deadline - (typeof performance !== "undefined" ? performance.now() : Date.now()));
+    let r;
+    try { r = orchestrateSolve(u, { timeLimit: left, steps: false, digits: env.digits }); } catch (_) { return null; }
+    const ex = r && r.ok && r.verification && r.verification.status === "passed" && (r.answers || []).filter((a) => a.kind === "exact" && a.tree && !a.constant);
+    if (!ex || ex.length !== 1 || r.answers.some((a) => a.kind !== "exact" && a.kind !== "approx")) return null;
+    env.log.add({ rule: "operator.evaluate", title: "Evaluate the inner operator", why: `${toText(u)} = ${toText(ex[0].tree)} (solved and verified on its own).`, before: u, after: ex[0].tree });
+    return ex[0].tree;
+  }
+  if (!u.args || !u.args.length || !hasOperator(u)) return u;
+  const args = [];
+  for (const a of u.args) { const v = a && a.k ? evalOperators(a, env, depth + 1) : a; if (v === null) return null; args.push(v); }
+  return X.withArgs(u, args);
+}
+const OPERATOR_REFUSAL = "the expression contains a derivative, integral, limit or sum that could not be evaluated on its own; bracket it or ask for it separately";
 const usesFn = (u, names) => (u.k === "fn" && names.has(u.name)) || (u.args || []).some((a) => a && a.k && usesFn(a, names));
 const CROSS_CHECK = new Set([...DISCRETE_NAMES, "binomial", "nCr", "nPr", "conj", "re", "im", "abs"]);
 
@@ -67,8 +94,10 @@ register({
     // simplify(...) / expand(...) around a constant: evaluate the inside, never echo the command
     const cmd = node.k === "fn" && ["simplify", "expand"].includes(node.name) && node.args.length === 1 ? node.name : null;
     if (cmd) node = node.args[0];
+    if (hasOperator(node)) { node = evalOperators(node, env); if (!node) throw unsupported(OPERATOR_REFUSAL); }
     const before = node;
     let v = simplify(node, env.ctx);
+    if (hasOperator(v)) throw unsupported(OPERATOR_REFUSAL);
     // conj / re / im / abs of an exact Gaussian rational: evaluate from its parts
     const PARTS = new Set(["conj", "re", "im", "abs"]);
     if (usesFn(v, PARTS)) {
@@ -126,6 +155,7 @@ function simplifyLike(goal) {
   return (node, card, env) => {
     let u = node;
     if (u.k === "fn" && ["simplify", "expand", "factor"].includes(u.name)) u = u.args[0];
+    if (hasOperator(u)) { u = evalOperators(u, env); if (!u) throw unsupported(OPERATOR_REFUSAL); }
     const s = simplify(u, env.ctx);
     let r = s;
     let conditions = [];
@@ -159,6 +189,7 @@ function simplifyLike(goal) {
       } catch (e) { if (e.code !== "BUDGET") throw e; }
     }
     if (goal === "factor") throw unsupported("factoring needs the polynomial engine");
+    if (hasOperator(r)) throw unsupported(OPERATOR_REFUSAL);
     if (r !== u) env.log.add({ rule: goal === "expand" ? "expand" : "simp", title: goal === "expand" ? "Expand" : "Simplify", why: goal === "expand" ? "Multiply out every bracket and collect like terms." : "Combine like terms and like powers, and evaluate exact values.", before: u, after: r });
     return {
       answers: [{ kind: "exact", tree: r }], solutionStatus: "exact", ...(conditions.length ? { conditions } : {}),

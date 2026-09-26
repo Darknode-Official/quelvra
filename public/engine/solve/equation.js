@@ -15,12 +15,13 @@ import { toText } from "../print.js";
 import { verifySolution, evalC } from "../verify.js";
 import { toContractVerification } from "../orchestrate.js";
 import { C, safe, fail, unwrap, difference, checkCandidate, dedupeTrees, cval, hp, nearZero, isZeroExact, cmpConst, signConst,
-  exactAnswer, verifyRootsWithVerifyJs, decimalTree, passCheck, failCheck, openCheck, makeCompare, hasFn, tidy, isConstTree, denominators, rationalBetween } from "./util.js";
+  exactAnswer, verifyRootsWithVerifyJs, decimalTree, passCheck, failCheck, openCheck, makeCompare, hasFn, tidy, isConstTree, denominators, rationalBetween, findAll } from "./util.js";
 import { solveCore, mergeSol, emptySol } from "./core.js";
 import { solveLiteral, coeffTrees, isRationalPoly, toUPoly } from "./poly.js";
 import { evalWTree } from "./lambert.js";
 import { certifiedRoots, numeratorForNumerics } from "./numeric.js";
-import { normalizeSet } from "./inequality.js";
+import { normalizeSet, solveInequality } from "./inequality.js";
+import { inferDomain } from "../domain.js";
 import * as P from "../poly.js";
 
 export function equationTarget(node, card, env) {
@@ -295,6 +296,25 @@ function regionAnswer(sol, x, original, dom, points) {
     const r = safe(() => solveCore(C(d, dom), { x, topVar: x, log: { add() {}, group: (h, f) => f() }, domain: dom, allowNumeric: false, depth: 0 }));
     if (!r) return null;
     for (const z of r.exact) if (Math.abs(cval(z.tree).im) < 1e-12) excl.push(z.tree);
+  }
+  // other real-domain conditions of the original (even-root radicands, log arguments, ...): an identity
+  // such as sqrt(x+5) - sqrt(x+5) = 0 holds exactly on that domain, not on the whole line
+  const domRels = [];
+  if (dom === "real") {
+    const di = original.k === "eq" ? safe(() => inferDomain(X.sub(original.args[0], original.args[1]))) : null;
+    if (!di) return null;
+    for (const c of di.conditions) {
+      if (X.freeOf(c.rel, x)) continue;
+      if (c.rel.k !== "rel" || findAll(c.rel, (w) => w.k === "fn" && !X.freeOf(w, x) && !["ln", "log", "abs", "exp"].includes(w.name)).length) return null;
+      if (c.rel.op !== "!=") domRels.push(c.rel);
+    }
+  }
+  if (domRels.length) {
+    const rel = domRels.length === 1 ? domRels[0] : X.and(...domRels);
+    const c = safe(() => solveInequality(rel, { unknowns: [x] }, { log: { add() {}, group: (h, f) => f() }, domain: "real", digits: 20, options: { variable: x } }, "exact"));
+    const a = c && c.answers && c.answers[0];
+    if (!a || a.kind !== "set" || a.approxEndpoints) return null;
+    tree = tree === X.TRUE ? a.tree : X.and(tree, a.tree);
   }
   if (tree === X.TRUE) {
     return { kind: "all", label: excl.length ? `every real ${x} except ${excl.map((z) => toText(z)).join(", ")} (where the equation is undefined)` : `every real ${x} is a solution`, tree: X.TRUE, excluded: excl };

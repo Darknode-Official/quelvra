@@ -124,7 +124,9 @@ function txtRaw(u, o) {
     }
     case "mul": {
       const p = fracParts(u);
-      const numF = p.num.map((f) => txt(f, PREC.mul, o));
+      // a factor that prints with a leading minus (an unsimplified product like |3|*(-2z)) keeps its
+      // brackets, else "|3|-2z" would read back as a difference
+      const numF = p.num.map((f) => { const s = txt(f, PREC.mul, o); return s.startsWith("-") ? `(${s})` : s; });
       let top = "";
       if (p.cn !== 1n || !numF.length) top = p.cn.toString();
       for (const f of numF) {
@@ -210,9 +212,11 @@ function txtRaw(u, o) {
   }
 }
 function negateCoeff(t) {
-  const fs = t.args.slice();
-  fs[0] = X.num(N.neg(fs[0].v));
-  return N.isOne(fs[0].v) ? fs.slice(1) : fs;
+  // the numeric factors need not come first in an unsimplified product (z*(-4)): collect them
+  let c = N.NEG_ONE;
+  const rest = [];
+  for (const f of t.args) if (X.isNum(f)) c = N.mul(c, f.v); else rest.push(f);
+  return N.isOne(c) ? rest : [X.num(c), ...rest];
 }
 function needsStar(left, right) {
   // keep output re-parseable and readable: 2x, 2sqrt(3), x*y

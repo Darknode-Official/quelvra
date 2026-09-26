@@ -474,6 +474,23 @@ function pick(r, k, L) {
 // compiler: tree -> closures over an algebra
 // ---------------------------------------------------------------------------------------
 const MAX_SUM_TERMS = 1_000_000;
+// Exact value of a constant tree built from rationals with +, * and small integer powers, else null.
+function ratConst(u, depth = 0) {
+  if (depth > 12) return null;
+  if (u.k === "num") return u.v;
+  if (u.k === "add" || u.k === "mul") {
+    let acc = u.k === "add" ? Nq.ZERO : Nq.ONE;
+    for (const a of u.args) { const r = ratConst(a, depth + 1); if (!r) return null; acc = u.k === "add" ? Nq.add(acc, r) : Nq.mul(acc, r); }
+    return acc;
+  }
+  if (u.k === "pow" && u.args[1].k === "num" && u.args[1].v.d === 1n && u.args[1].v.n >= -8n && u.args[1].v.n <= 8n) {
+    const b = ratConst(u.args[0], depth + 1);
+    if (!b || (Nq.isZero(b) && u.args[1].v.n < 0n)) return null;
+    return Nq.pow(b, u.args[1].v.n);
+  }
+  return null;
+}
+
 function compile(node, vars, A) {
   const slots = new Map(vars.map((v, i) => [v, i]));
   let nslots = vars.length;
@@ -535,9 +552,13 @@ function compile(node, vars, A) {
         return negate ? (env) => A.neg(core(env)) : core;
       }
       case "pow": {
-        const [b, e] = u.args;
-        if (b.k === "const" && b.name === "e") { const ce = c(e); return (env) => A.fn("exp", [ce(env)]); }
+        const [b, e0] = u.args;
+        if (b.k === "const" && b.name === "e") { const ce = c(e0); return (env) => A.fn("exp", [ce(env)]); }
         const cb = c(b);
+        // an unsimplified rational exponent ((x+6)^(1/3) parses as 1 * 3^-1) is still a rational, so
+        // the real odd root applies, not the complex principal value
+        const er = e0.k === "num" ? null : ratConst(e0);
+        const e = er ? X.num(er) : e0;
         if (e.k === "num") {
           const { n, d } = e.v;
           if (d === 1n) return (env) => A.powInt(cb(env), n);

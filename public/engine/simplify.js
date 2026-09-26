@@ -293,6 +293,17 @@ export function simpPow(b, e) {
   // e^(k ln u) = u^k  for rational k (u > 0 required by ln)
   if (b === E && e.k === "mul" && e.args.length === 2 && isNum(e.args[0]) && e.args[1].k === "fn" && e.args[1].name === "ln")
   { note(e.args[1].args[0], ">0", "ln requires a positive argument"); return simpPow(e.args[1].args[0], e.args[0]); }
+  // a^(c log_a(y)) = a^(c ln(y)/ln(a)) = y^c  for a positive number a != 1 and a constant y (y > 0 is
+  // required by the log; symbolic y is left to the explained rule exp.log_inverse);
+  // a^(t + rest) = a^t a^rest splits off such a term (a > 0, so the split is valid)
+  if (isNum(b) && N.isPos(b.v)) {
+    const lq = logQuotient(b, e);
+    if (lq) { note(lq.y, ">0", "log requires a positive argument"); return simpPow(lq.y, lq.c); }
+    if (e.k === "add") {
+      const t = e.args.find((a) => logQuotient(b, a));
+      if (t) return simpMul([simpPow(b, t), simpPow(b, simpAdd(e.args.filter((a) => a !== t)))]);
+    }
+  }
   // (x^a)^b
   if (b.k === "pow") return powOfPow(b.args[0], b.args[1], e);
   // (u*v)^n
@@ -316,6 +327,21 @@ export function simpPow(b, e) {
   // |u|^(even integer) = u^(even) for real u
   if (b.k === "fn" && b.name === "abs" && isInt(e) && e.v.n % 2n === 0n && isReal(b.args[0])) return simpPow(b.args[0], e);
   return rawPow(b, e);
+}
+
+// e = c * log_b(y) or c * ln(y) / ln(b) with rational c: { y, c }, else null
+function logQuotient(b, e) {
+  const fs = e.k === "mul" ? e.args : [e];
+  let c = N.ONE;
+  const rest = [];
+  for (const f of fs) if (isNum(f)) c = N.mul(c, f.v); else rest.push(f);
+  if (rest.length === 1 && rest[0].k === "fn" && rest[0].name === "log" && rest[0].args.length === 2 && rest[0].args[0] === b && freeSymbols(rest[0].args[1]).size === 0) return { y: rest[0].args[1], c: num(c) };
+  if (rest.length === 2) {
+    const inv = rest.find((f) => f.k === "pow" && f.args[1] === NEG_ONE && f.args[0].k === "fn" && f.args[0].name === "ln" && f.args[0].args[0] === b);
+    const lg = rest.find((f) => f !== inv && f.k === "fn" && f.name === "ln");
+    if (inv && lg && freeSymbols(lg.args[0]).size === 0) return { y: lg.args[0], c: num(c) };
+  }
+  return null;
 }
 
 function powOfPow(x, a, b) {

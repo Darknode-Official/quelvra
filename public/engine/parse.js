@@ -704,7 +704,7 @@ class Parser {
     let name = t.v;
     if (ALIASES[name]) name = ALIASES[name];
     if (name === "lim") return this.parseLimit(t);
-    if (name === "int" && !this.at("(")) return this.parseIntegral(t);
+    if (name === "int" && (!this.at("(") || this.intGroupIsIntegrand())) return this.parseIntegral(t);
     if (name === "int") name = "integrate";
     if ((name === "sum" || name === "prod") && (this.at("_") || !this.at("("))) return this.parseBigOp(name, t);
     if (name === "d" && !this.at("/")) {
@@ -719,7 +719,7 @@ class Parser {
         if (n2.t === "id") {
           this.i += 3;
           const v = X.sym(n2.v);
-          const body = this.at("(") ? this.parseExpr(BP.add) : this.parseExpr(BP.add);
+          const body = this.operatorBody();
           return X.deriv(body, v, X.ONE);
         }
       }
@@ -735,7 +735,7 @@ class Parser {
           this.eat("^");
           const o2 = this.peek();
           if (o2.t === "num") this.next();
-          const body = this.parseExpr(BP.add);
+          const body = this.operatorBody();
           return X.deriv(body, X.sym(v.v), X.num(N.fromDecimal(ord.v)));
         }
       }
@@ -855,6 +855,52 @@ class Parser {
     return this.parseExpr(BP.post);
   }
 
+  // "int (2x+1)/(x+2) dx": the bracket opens the integrand, not an integrate(f, x) call. It is a
+  // call only when the group has a top-level comma or no differential follows it.
+  intGroupIsIntegrand() {
+    let depth = 0, j = this.i;
+    for (; j < this.toks.length; j++) {
+      const a = this.toks[j];
+      if (a.t === "eof") return false;
+      if (a.t === "op" && (a.v === "(" || a.v === "[")) depth++;
+      else if (a.t === "op" && (a.v === ")" || a.v === "]")) { if (--depth === 0) break; }
+      else if (depth === 1 && a.t === "op" && a.v === ",") return false;
+    }
+    for (let k = j + 1, d = 0; k < this.toks.length; k++) {
+      const a = this.toks[k];
+      if (a.t === "op" && (a.v === "(" || a.v === "[")) { d++; continue; }
+      if (a.t === "op" && (a.v === ")" || a.v === "]") && d > 0) { d--; continue; }
+      if (a.t === "eof" || (a.t === "op" && (a.v === "," || a.v === ";" || a.v === ")" || RELS.has(a.v)))) return false;
+      const n = this.toks[k + 1];
+      if (a.t === "id" && a.v === "d" && n && n.t === "id" && !FUNCTIONS.has(n.v) && n.v !== "d" && (n.s === a.s || (this.toks[k + 2] || {}).t === "eof")) return true;
+      if (a.t === "id" && a.v === "int") return false;
+    }
+    return false;
+  }
+
+  // The body of d/dx or lim written without brackets is the whole sum that follows ("d/dx x^2 + 1"
+  // is the derivative of x^2 + 1, never d/dx(x^2) + 1), up to a term that starts another operator.
+  // A body that is exactly one bracket group ends with it: d/dx (x^2) + 1 (but not d/dx (x+1)/3 - x).
+  operatorBody() {
+    let close = -1;
+    if (this.at("(")) for (let j = this.i, d = 0; j < this.toks.length; j++) {
+      const a = this.toks[j];
+      if (a.t === "op" && a.v === "(") d++;
+      else if (a.t === "op" && a.v === ")" && --d === 0) { close = j; break; }
+    }
+    let body = this.parseExpr(BP.add);
+    if (close >= 0 && this.i === close + 1) return body;
+    for (;;) {
+      const t = this.peek(), n = this.peek(1);
+      if (!(t.t === "op" && (t.v === "+" || t.v === "-"))) break;
+      if ((n.t === "id" && ["d", "lim", "int", "sum", "prod", "diff", "derivative", "limit", "integrate", "integral"].includes(n.v)) || (n.t === "op" && n.v === "int")) break;
+      this.next();
+      const rhs = this.parseExpr(BP.add);
+      body = t.v === "+" ? X.add(body, rhs) : X.sub(body, rhs);
+    }
+    return body;
+  }
+
   parseIntegral(t) {
     let lo, hi;
     if (this.eat("_")) lo = this.parseBound();
@@ -900,7 +946,7 @@ class Parser {
     const to = paren ? this.parseExpr(0) : this.parseExpr(BP.mul);
     this.bound.pop();
     if (paren) this.expect(")");
-    const body = this.parseExpr(BP.add);
+    const body = this.operatorBody();
     return X.limit(body, X.sym(vt.v), to, dir);
   }
 
