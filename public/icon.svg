@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Quelvra">
+  <rect width="512" height="512" rx="112" fill="#0b1120"/>
+  <rect x="24" y="24" width="464" height="464" rx="92" fill="none" stroke="#1d2b47" stroke-width="8"/>
+  <circle cx="236" cy="236" r="124" fill="none" stroke="#00d4ff" stroke-width="36"/>
+  <path d="M304 304 L392 392" stroke="#00d4ff" stroke-width="40" stroke-linecap="round"/>
+  <path d="M172 250 C 200 180, 232 180, 250 236 S 300 292, 320 214" fill="none" stroke="#e6eefc" stroke-width="18" stroke-linecap="round"/>
+</svg>

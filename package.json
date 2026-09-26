@@ -1,0 +1,14 @@
+{
+  "name": "quelvra",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline, verify-first math engine. Every answer is checked independently before it is shown.",
+  "type": "module",
+  "scripts": {
+    "test": "node test/run.js",
+    "bench": "node test/bench/run.js",
+    "sw": "node tools/sw-files.mjs",
+    "serve": "python3 -m http.server 8080 --directory public"
+  },
+  "engines": { "node": ">=20" }
+}
