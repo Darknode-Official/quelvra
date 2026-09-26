@@ -16,6 +16,7 @@
 // "f(x) = <expr>" or "y = <expr>" in such a request passes <expr> as f and x as the variable.
 
 import { parse, FUNCTIONS, latexToText } from "./parse.js";
+import { morePatterns, TAIL } from "./language-more.js";
 
 const NUMBER_WORDS = {
   zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
@@ -207,6 +208,8 @@ function equationsText(s) {
 
 // Patterns: each returns a translation or null. Ordered from most to least specific.
 const PATTERNS = [
+  // probability, statistics, counting, complex numbers, series, geometry, number theory, ... (language-more.js)
+  ...morePatterns({ expr, mathOf, LEAD, re }),
   // ---- differential equations and systems ----
   { id: "solve-ode", re: /^solve (?:the )?(?:differential )?(?:equation )?(.+?) (?:with|given|where|if|subject to|and) (?:the )?(?:initial (?:conditions?|values?) )?((?:[a-z]'*\(.+?\) ?= ?.+?)(?:(?:,| and) [a-z]'*\(.+?\) ?= ?.+?)*)$/i,
     build: (m) => { if (!/'|d[a-z]\/d[a-z]/.test(m[1])) return null; const conds = m[2].split(/\s*(?:,|\band\b)\s*/).map(expr); const math = [expr(m[1]), ...conds].join(", ");
@@ -513,9 +516,30 @@ function logNote(math, words, notes) {
   return notes;
 }
 
+// Notation that the parser would misread: nCr / nPr shorthands, "n choose k", P(Z < a) for the
+// standard normal, "a mod m" inverses. Rewritten to function calls before anything else.
+const NUM = String.raw`-?\d+(?:\.\d+)?`;
+const NOTATION = [
+  [re(String.raw`^(.*?)\b(\d+|[a-z])\s+choose\s+(\d+|[a-z])\b(.*)$`), (m) => `${m[1]}binomial(${m[2]}, ${m[3]})${m[4]}`],
+  [/\bC\(\s*(\d+)\s*,\s*(\d+)\s*\)/g, (m) => `binomial(${m[1]}, ${m[2]})`],
+  [/\bP\(\s*(\d+)\s*,\s*(\d+)\s*\)/g, (m) => `nPr(${m[1]}, ${m[2]})`],
+  [/\b(\d+)\s*C\s*(\d+)\b/g, (m) => `binomial(${m[1]}, ${m[2]})`],
+  [/\b(\d+)\s*P\s*(\d+)\b/g, (m) => `nPr(${m[1]}, ${m[2]})`],
+  [re(String.raw`\bP\(\s*Z\s*(<=?|≤)\s*(${NUM})\s*\)`, "g"), (m) => `normalcdf(-oo, ${m[2]})`],
+  [re(String.raw`\bP\(\s*Z\s*(>=?|≥)\s*(${NUM})\s*\)`, "g"), (m) => `normalcdf(${m[2]}, oo)`],
+  [re(String.raw`\bP\(\s*(${NUM})\s*(?:<=?|≤)\s*Z\s*(?:<=?|≤)\s*(${NUM})\s*\)`, "g"), (m) => `normalcdf(${m[1]}, ${m[2]})`],
+];
+function notation(s) {
+  for (const [rx, f] of NOTATION) {
+    if (rx.global) s = s.replace(rx, (...a) => f(a));
+    else { const m = s.match(rx); if (m) s = f(m); }
+  }
+  return s;
+}
+
 // Main entry.
 export function translate(input) {
-  let raw = clean(String(input || "").replace(/\s+/g, " "));
+  let raw = clean(notation(String(input || "").replace(/\s+/g, " ")));
   // "2+2=" / "2+2 = ?": an evaluation request
   if (/=\s*$/.test(raw) && (raw.match(/=/g) || []).length === 1 && !/[<>]/.test(raw)) raw = clean(raw.replace(/=\s*$/, ""));
   if (!raw) return { ok: false, reason: "empty input" };
@@ -527,6 +551,7 @@ export function translate(input) {
   let lower = raw;
   for (let k = 0; k < 4; k++) { const t = lower.replace(PREFIX, "").replace(SUFFIX, ""); if (t === lower) break; lower = clean(t); }
   if (!lower) return { ok: false, reason: "empty input" };
+  lower = clean(lower.replace(TAIL, ""));
   if (lower !== raw && looksLikeMath(lower)) return { ok: true, math: lower, goal: null, interpretation: lower, pattern: "math-polite", confidence: 0.95, notes: [] };
   let firstFail = null;
   for (const p of PATTERNS) {

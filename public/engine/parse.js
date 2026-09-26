@@ -35,6 +35,21 @@ export const FUNCTIONS = new Set([
   ...["domain", "range", "zeros", "intercepts", "asymptotes", "extrema", "inflection", "monotonic", "critical", "tangent", "normal", "inverse",
     "completesquare", "apart", "identity", "line", "slope", "distance", "midpoint", "arclength", "areabetween", "volume", "avgvalue",
     "maximize", "minimize", "dot", "cross", "piecewise"],
+  // discrete math, probability and statistics (discrete.js, strategies/compute-more.js)
+  ...["catalan", "fibonacci", "fib", "lucas", "subfactorial", "derangements", "multinomial", "stirling", "bell", "nthprime", "divisorsum", "numdivisors",
+    "modinv", "powmod", "binompdf", "binomcdf", "geompdf", "geomcdf", "poissonpdf", "poissoncdf", "hypergeompdf", "normalpdf", "normalcdf",
+    "invnorm", "pstdev", "pvariance", "quartiles", "iqr", "datarange", "zscore", "corr", "linreg", "tobase", "frombase",
+    "polydiv", "polyrem", "polygcd", "coeff", "discriminant", "vertex", "wmean", "circle", "linedist", "rootsum", "rootprod", "diffat", "dblint", "grad", "solvein", "polar"],
+]);
+// Allowed argument counts; a call with any other count is a syntax error (never silently truncated).
+const ARITY = new Map([
+  ...["sin", "cos", "tan", "cot", "sec", "csc", "asin", "acos", "acot", "asec", "acsc", "sinh", "cosh", "tanh", "coth", "sech", "csch",
+    "asinh", "acosh", "atanh", "ln", "exp", "sqrt", "cbrt", "abs", "sign", "floor", "ceil", "gamma", "factorial", "erf", "erfi", "erfc",
+    "conj", "re", "im", "arg", "Si", "Ci", "Shi", "Chi", "Ei", "li", "FresnelS", "FresnelC", "isprime", "factorint", "phi", "divisors",
+    "catalan", "fibonacci", "fib", "lucas", "subfactorial", "derangements", "bell", "nthprime", "divisorsum", "numdivisors"].map((n) => [n, [1]]),
+  ...["binomial", "nCr", "nPr", "root", "stirling", "modinv", "geompdf", "geomcdf", "poissonpdf", "poissoncdf", "tobase", "frombase"].map((n) => [n, [2]]),
+  ...["powmod", "binompdf", "binomcdf", "zscore"].map((n) => [n, [3]]),
+  ["log", [1, 2]], ["round", [1, 2]], ["circle", [1]], ["linedist", [3]], ["rootsum", [1, 2]], ["rootprod", [1, 2]], ["diffat", [3]], ["dblint", [7]], ["solvein", [4, 6]], ["polar", [1]], ["hypergeompdf", [4]], ["normalpdf", [1, 3]], ["normalcdf", [2, 4]], ["invnorm", [1, 3]],
 ]);
 const ALIASES = {
   arcsin: "asin", arccos: "acos", arctan: "atan", arccot: "acot", arcsec: "asec", arccsc: "acsc",
@@ -54,13 +69,17 @@ const KEYWORDS = new Set(["lim", "int", "and", "or", "not", "d", "deg"]);
 // Commands that are ordinary English words are call-form only: "domain(1/x, x)", never "domain of ...".
 const CALL_ONLY = new Set(["domain", "range", "zeros", "intercepts", "asymptotes", "extrema", "inflection", "monotonic", "critical", "tangent", "normal", "inverse",
   "completesquare", "apart", "identity", "line", "slope", "distance", "midpoint", "arclength", "areabetween", "volume", "avgvalue",
-  "maximize", "minimize", "dot", "cross", "piecewise"]);
+  "maximize", "minimize", "dot", "cross", "piecewise", "bell", "vertex", "discriminant", "quartiles", "circle"]);
 // The analysis commands are ordinary English words, so they are whole-identifier names too:
 // "lineal" is never line*a*l, "normalise" never normal*i*s*e, "rangers" never range*r*s.
 const WHOLE_ONLY = new Set(["li", "Si", "Ci", "Shi", "Chi", "Ei", "erfi", "erfc", "FresnelS", "FresnelC", "lambertw", "LambertW", "deg",
   "domain", "range", "zeros", "intercepts", "asymptotes", "extrema", "inflection", "monotonic", "critical", "tangent", "normal", "inverse",
   "completesquare", "apart", "identity", "line", "slope", "distance", "midpoint", "arclength", "areabetween", "volume", "avgvalue",
-  "maximize", "minimize", "dot", "cross", "piecewise"]);
+  "maximize", "minimize", "dot", "cross", "piecewise",
+  "catalan", "fibonacci", "fib", "lucas", "subfactorial", "derangements", "multinomial", "stirling", "bell", "nthprime", "divisorsum", "numdivisors",
+    "modinv", "powmod", "binompdf", "binomcdf", "geompdf", "geomcdf", "poissonpdf", "poissoncdf", "hypergeompdf", "normalpdf", "normalcdf",
+    "invnorm", "pstdev", "pvariance", "quartiles", "iqr", "datarange", "zscore", "corr", "linreg", "tobase", "frombase",
+    "polydiv", "polyrem", "polygcd", "coeff", "discriminant", "vertex", "wmean", "circle", "linedist", "rootsum", "rootprod", "diffat", "dblint", "grad", "solvein", "polar"]);
 const WORDS = [...FUNCTIONS, ...Object.keys(ALIASES), ...GREEK, ...Object.keys(CONSTS), ...KEYWORDS]
   .filter((w) => w.length > 1 && !WHOLE_ONLY.has(w))
   .sort((a, b) => b.length - a.length);
@@ -764,6 +783,8 @@ class Parser {
       else args = [this.fnArgNoParen()];
     }
     void m;
+    const ar = ARITY.get(name);
+    if (ar && !ar.includes(args.length)) this.err(`${name} takes ${ar.join(" or ")} argument${ar.length === 1 && ar[0] === 1 ? "" : "s"}, not ${args.length}`, t, `Write ${name}(${Array.from({ length: ar[0] }, (_, i) => "abcd"[i]).join(", ")})`);
     let node;
     if (name === "log") {
       if (base) node = X.fn("log", base, args[0]);
@@ -970,7 +991,7 @@ function usesFn(w, name) {
 export function unknownWords(src) {
   const text = String(src).replace(/\\(?:begin|end)\{[A-Za-z]+\*?\}/g, " ").replace(/\\[A-Za-z]+/g, " ");
   const out = [];
-  for (const m of text.matchAll(/\b(of|is|as|by|if|an|the|to)\b/gi)) out.push(m[0]);
+  for (const m of text.matchAll(/\b(of|is|as|by|if|an|the|to|for|in|with|from|over|where|when|find|what|then|that|than|are|was)\b/gi)) out.push(m[0]);
   for (const m of text.matchAll(/[A-Za-z]{3,}/g)) {
     const w = m[0];
     if (WORDS.includes(w) || WORDS.includes(w.toLowerCase())) continue;
@@ -979,6 +1000,8 @@ export function unknownWords(src) {
     if (singles >= 3 || (singles >= 2 && parts.length === singles && /[aeiou]{1}.*[aeiou]|(.)\1/i.test(w))) out.push(w);
     // "foo", "info", "infant": a word that only splits by borrowing oo (infinity) or inf is not math
     else if (parts.length > 1 && parts.some((p) => p === "oo" || p === "inf")) out.push(w);
+    // "form" -> f or m, "band" -> b and: a logic keyword borrowed from inside a longer word is not math
+    else if (parts.length > 1 && parts.some((p) => /^(or|and|not|xor|nand|nor|implies|iff)$/i.test(p))) out.push(w);
   }
   return out;
 }

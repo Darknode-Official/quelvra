@@ -12,6 +12,9 @@ Live: [quelvra.onrender.com](https://quelvra.onrender.com/) and [darknode.ai/que
 - **Function analysis:** domain, range, zeros, asymptotes, extrema, inflection points, tangent lines, inverses, and area and volume.
 - **Linear algebra:** determinants, inverses, eigenvalues, row reduction, and dot and cross products.
 - **Number theory:** primality proofs with certificates, factoring, congruences, and the Chinese remainder theorem.
+- **Probability and statistics:** dice, cards, binomial and conditional probability, normal distribution, regression.
+- **Counting, series and geometry:** combinations, derangements, arithmetic and geometric series, areas, volumes and triangle solving.
+- **Logic and sets:** truth tables, tautology and equivalence checks, set operations.
 - **Units:** conversions with exact factors, e.g. "60 miles per hour to meters per second".
 - **Open problems:** bounded explorations (Collatz, Goldbach, twin primes, zeta zeros) that never claim a proof.
 - **Input:** typed math, LaTeX, Unicode, plain English, handwriting, or a photo.
@@ -28,12 +31,14 @@ The verifier uses its own numerics, separate from the solver's.
 | `public/engine/` | The math engine (plain ES modules, no dependencies) |
 | `test/` | Test suite (`npm test`) and benchmark (`npm run bench`) |
 | `tools/sw-files.mjs` | Regenerates the service worker's offline file list |
+| `tools/coverage*.mjs` | Coverage sweep: marks answers correct, refused or wrong |
 
 ## Develop
 
 ```
 npm test            # full test suite
 npm run bench       # benchmark: counts only verified-correct answers
+npm run coverage    # 270 problems across 17 areas (add -- --heldout for 75 more)
 npm run serve       # http://127.0.0.1:8080
 ```
 

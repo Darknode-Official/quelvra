@@ -41,7 +41,13 @@ const displayFactors = (fs) => fs.map((f, i) => [f, i]).sort((a, b) => {
   if (ka !== null && kb !== null && ka !== kb) return ka - kb;
   return a[1] - b[1];
 }).map(([f]) => f);
+// a + bi: in a constant complex number the real part comes first (11 - 2i, not -2i + 11)
+const hasI = (t) => t === X.I || (t.args || []).some(hasI);
+const realFirst = (u, ts) => (ts.some(hasI) && !ts.every(hasI) && X.freeSymbols(u).size === 0 ? [...ts.filter((t) => !hasI(t)), ...ts.filter(hasI)] : ts);
 function displayTerms(u) {
+  return realFirst(u, displayTermsRaw(u));
+}
+function displayTermsRaw(u) {
   const terms = u.args.slice();
   // stable sort: higher degree first, keep canonical order among equals (reversed)
   return terms
@@ -289,7 +295,7 @@ function texRaw(u) {
       if (u.name === "factorial") return `${tex(a[0], PREC.atom)}!`;
       if (u.name === "floor") return `\\left\\lfloor ${tex(a[0], 0)}\\right\\rfloor`;
       if (u.name === "ceil") return `\\left\\lceil ${tex(a[0], 0)}\\right\\rceil`;
-      if (u.name === "binomial") return `\\binom{${tex(a[0], 0)}}{${tex(a[1], 0)}}`;
+      if (u.name === "binomial" && a.length === 2) return `\\binom{${tex(a[0], 0)}}{${tex(a[1], 0)}}`;
       if (u.name === "log") {
         if (X.isNum(a[0]) && a[0].v.n === 10n && a[0].v.d === 1n) return `\\log\\left(${tex(a[1], 0)}\\right)`;
         return `\\log_{${tex(a[0], 0)}}\\left(${tex(a[1], 0)}\\right)`;

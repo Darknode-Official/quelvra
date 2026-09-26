@@ -44,3 +44,20 @@ test("dot and cross products", () => {
   eq(ans("cross([a,b,c],[1,0,0])"), "[0, c, -b]");
   ok(!run("dot([1,2],[3,4,5])").ok || run("dot([1,2],[3,4,5])").answers.every((a) => !a.tree), "length mismatch refused");
 });
+
+test("standard deviation and variance give sample and population, labelled", () => {
+  const r = run("standard deviation of 2, 4, 4, 4, 5, 5, 7, 9");
+  ok(r.verification.status === "passed");
+  eq(r.answers.map((a) => a.label + " = " + toText(a.tree)).join("; "), "Sample standard deviation (divide by n - 1) = 4sqrt(14)/7; Population standard deviation (divide by n) = 2");
+  eq(run("variance of 1, 2, 3, 4").answers.map((a) => toText(a.tree)).join("; "), "5/3; 5/4");
+});
+test("complex numbers print real part first", () => {
+  eq(ans("(3+4i)(1-2i)"), "11 - 2i");
+  eq(ans("(2+i)/(1-i)"), "1/2 + 3i/2");
+  eq(ans("i*(2+i)"), "-1 + 2i");
+});
+test("finite series without the words arithmetic or geometric", () => {
+  eq(ans("sum of the first 10 terms of 2, 6, 18, ..."), "59048");
+  eq(ans("sum of first 20 terms of 3, 7, 11, ..."), "820");
+  ok(!run("sum of the first 5 terms of 1, 2, 5, ...").ok, "neither arithmetic nor geometric: refused");
+});

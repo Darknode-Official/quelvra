@@ -263,7 +263,7 @@ test("static: no emojis, no eval/new Function, no remote URLs in UI files", () =
 test("static: licensing guard is the first script in index.html", () => {
   const html = readFileSync(join(ROOT, "index.html"), "utf8");
   const first = html.indexOf("<script");
-  ok(html.slice(first).startsWith('<script>!function(){var a=["darknode.ai","www.darknode.ai","darknode-official.github.io","localhost","127.0.0.1"]'));
+  ok(html.slice(first).startsWith('<script>!function(){var a=["darknode.ai","www.darknode.ai","darknode-official.github.io","quelvra.onrender.com","localhost","127.0.0.1"]'));
   ok(!/firebase|botpress|gstatic|googleapis/i.test(html), "index.html must not load darknode auth scripts");
 });
 

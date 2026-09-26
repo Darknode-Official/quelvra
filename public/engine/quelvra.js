@@ -18,6 +18,7 @@ import "./strategies/compute.js";
 import { solveResearch } from "./strategies/research.js";
 import * as NUM from "./numeric.js";
 import * as U from "./units.js";
+import { solveLogic } from "./logic.js";
 
 export const loadErrors = [];
 const OPTIONAL = ["./strategies/solve.js", "./strategies/integrate.js", "./strategies/calculus.js", "./strategies/analysis.js"];
@@ -55,6 +56,15 @@ export function solve(input, options = {}) {
   if (typeof text === "string") {
     const res = solveResearch(text, { onProgress: options.onProgressDetail, timeMs: options.timeLimit });
     if (res) return finishResearch(res, options);
+  }
+  // propositional logic and finite-set operations ("truth table of p and q", "{1, 2} union {3}")
+  if (typeof text === "string") {
+    const lg = solveLogic(text);
+    if (lg) {
+      if (lg.verification.status !== "passed") return refusal(text, "Quelvra computed an answer but could not verify it, so it is withheld");
+      lg.explanation = explain(lg, options.mode === "answer" ? "answer" : "steps");
+      return lg;
+    }
   }
   const r = orchestrate(text, options);
   if (options.mode === "numeric") attachNumeric(r, options);

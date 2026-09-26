@@ -14,6 +14,7 @@ import * as N from "./num.js";
 import { simplify, makeCtx } from "./simplify.js";
 import { toText } from "./print.js";
 import { SPECIAL_REAL } from "./specfun.js";
+import { DISCRETE_FLOAT } from "./verify-discrete.js";
 
 // ---------- complex double evaluator ----------
 const C = (re, im = 0) => ({ re, im });
@@ -61,7 +62,7 @@ const REAL_FN = {
   sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh, coth: (x) => 1 / Math.tanh(x), sech: (x) => 1 / Math.cosh(x), csch: (x) => 1 / Math.sinh(x),
   asinh: Math.asinh, acosh: (x) => (x < 1 ? NaN : Math.acosh(x)), atanh: (x) => (Math.abs(x) >= 1 ? NaN : Math.atanh(x)),
   ln: (x) => (x <= 0 ? NaN : Math.log(x)), exp: Math.exp, abs: Math.abs, sign: Math.sign,
-  floor: Math.floor, ceil: Math.ceil, round: Math.round, erf: erf, gamma: gamma, factorial: (x) => gamma(x + 1),
+  floor: Math.floor, ceil: Math.ceil, round: (x) => (x < 0 ? -Math.round(-x) : Math.round(x)), erf: erf, gamma: gamma, factorial: (x) => gamma(x + 1),
   sqrt: (x) => (x < 0 ? NaN : Math.sqrt(x)), cbrt: Math.cbrt,
 };
 function erf(x) {
@@ -131,6 +132,13 @@ export function evalC(u, env = {}, mode = "real") {
       }
       case "fn": {
         const args = w.args.map(ev);
+        // normalcdf(-oo, b): an infinite bound is allowed (the only function here that takes one)
+        // (-1) * oo in complex arithmetic leaves a NaN imaginary part: an infinite real bound is still real
+        const realArg = (a) => (a.im === 0 || (!Number.isFinite(a.re) && !Number.isNaN(a.re) && Number.isNaN(a.im))) && !Number.isNaN(a.re);
+        if (w.name === "normalcdf" && args.every(realArg)) {
+          const v = DISCRETE_FLOAT.normalcdf(args.map((a) => a.re));
+          return Number.isFinite(v) ? C(v) : NaNC;
+        }
         if (args.some(bad)) return NaNC;
         const n = w.name;
         if (n === "log") {
@@ -151,6 +159,7 @@ export function evalC(u, env = {}, mode = "real") {
           if (n === "binomial" || n === "nCr") return C(gamma(xs[0] + 1) / (gamma(xs[1] + 1) * gamma(xs[0] - xs[1] + 1)));
           if (n === "nPr") return C(gamma(xs[0] + 1) / gamma(xs[0] - xs[1] + 1));
           if (n === "root" && xs.length === 2) return ev(X.pow(w.args[0], X.recip(w.args[1])));
+          if (DISCRETE_FLOAT[n]) { const v = DISCRETE_FLOAT[n](xs); return Number.isFinite(v) ? C(v) : NaNC; }
         }
         return NaNC;
       }

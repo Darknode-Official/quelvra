@@ -17,6 +17,7 @@ import {
   ZERO, ONE, TWO, NEG_ONE, HALF, PI, E, I, OO, UNDEF, TRUE, FALSE,
   isNum, isInt, isZero, isOne, before, sortArgs, coeffAndTerm, baseExp, freeSymbols, bool,
 } from "./expr.js";
+import { evalDiscrete, DISCRETE_NAMES } from "./discrete.js";
 
 // ---------------- context ----------------
 // domain: "real" (default, school convention: odd roots of negatives are real) or "complex"
@@ -611,6 +612,12 @@ export function simpFn(name, args) {
       if (x.k === "fn" && x.name === INVERSE[name]) return x.args[0];
       return F(name, x);
     }
+    case "erf": case "erfi": {
+      // odd functions: erf(-u) = -erf(u), erf(0) = 0
+      if (isZero(x)) return ZERO;
+      if (negCoeff(x)) return negate(simpFn(name, [negate(x)]));
+      return F(name, x);
+    }
     case "asin": case "acos": case "atan": {
       const table = {
         asin: [["0", ZERO], ["1/2", simpMul([num(1, 6), PI])], ["1", simpMul([HALF, PI])], ["-1/2", simpMul([num(-1, 6), PI])], ["-1", simpMul([num(-1, 2), PI])]],
@@ -693,11 +700,13 @@ export function simpFn(name, args) {
       return F(name, ...args);
     }
     case "binomial": case "nCr": {
+      if (args.length !== 2) return F(name, ...args);
       const [n, k] = args;
       if (isInt(n) && isInt(k) && n.v.n >= 0n) return num(N.binom(n.v.n, k.v.n));
       return F("binomial", n, k);
     }
     case "nPr": {
+      if (args.length !== 2) return F(name, ...args);
       const [n, k] = args;
       if (isInt(n) && isInt(k) && n.v.n >= 0n && k.v.n >= 0n && k.v.n <= n.v.n) return num(N.factorial(n.v.n) / N.factorial(n.v.n - k.v.n));
       return F("nPr", n, k);
@@ -706,10 +715,21 @@ export function simpFn(name, args) {
       if (isReal(x)) return name === "im" ? ZERO : x;
       return F(name, x);
     }
-    default:
+    default: {
+      if (DISCRETE.has(name)) {
+        const v = evalDiscrete(name, args, DT);
+        if (v) return v;
+      }
       return F(name, ...args);
+    }
   }
 }
+// discrete / probability functions (discrete.js) get simplify's constructors
+const DISCRETE = new Set(DISCRETE_NAMES);
+const DT = {
+  num, numQ: num, ZERO, ONE, NEG_ONE, HALF, PI, E, I, OO, UNDEF,
+  simpMul: (a) => simpMul(a), simpAdd: (a) => simpAdd(a), simpPow: (b, e) => simpPow(b, e), simpFn: (n, a) => simpFn(n, a),
+};
 
 // exact log_b(y) for rationals when y = b^k with k rational (b^(p/q) = y)
 function exactLog(b, y) {

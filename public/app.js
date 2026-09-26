@@ -314,6 +314,15 @@ function renderNotice(msg) {
   $("#results").replaceChildren(h("div", { class: "card" }, h("p", { class: "muted", style: "margin:0" }, msg)));
 }
 
+// A numeric approximation only helps when the input was read as math that has a number to find: not for
+// text that was never understood ("hi"), and not for commands, definitions or logic.
+const NO_NUMERIC_KINDS = new Set(["command", "unknown", "function-definition", "interval", "logic"]);
+function numericMakesSense(r) {
+  if (!r || r.error || !r.input || !r.input.text) return false;
+  const c = r.classification;
+  return !!(c && c.kind && !NO_NUMERIC_KINDS.has(c.kind));
+}
+
 function renderError(err, input, noNumeric = false) {
   destroyGraph();
   const card = h("section", { class: "card err-card", "aria-label": "Error" });
@@ -323,7 +332,7 @@ function renderError(err, input, noNumeric = false) {
   else {
     card.append(h("p", { class: "err-msg", style: "margin:0" }, err.message || "Unknown error"));
     if (err.hint) card.append(h("p", { class: "err-hint" }, "Hint: " + err.hint));
-    if (!noNumeric && err.code !== "WORKER") {
+    if (!noNumeric && !["WORKER", "SYNTAX", "CANCELLED"].includes(err.code)) {
       card.append(h("div", { class: "ans-tools", style: "margin-top:10px" }, h("button", { type: "button", class: "btn small", onclick: () => runNumeric(input) }, "Try a numeric approximation")));
     }
   }
@@ -385,7 +394,7 @@ function answerCard(r) {
     if (approxes.length) {
       card.append(h("p", { class: "muted small-t", style: "margin:10px 0 4px" }, "Numeric approximation:"));
       for (const a of approxes) card.append(approxView(a));
-    } else if (r.input && r.input.text) {
+    } else if (numericMakesSense(r)) {
       card.append(h("div", { class: "ans-tools", style: "margin-top:10px" }, h("button", { type: "button", class: "btn small", onclick: () => runNumeric(state.lastInput) }, "Try a numeric approximation")));
     }
     if (r.simplified) {

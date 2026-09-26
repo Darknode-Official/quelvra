@@ -14,6 +14,7 @@ import { factorTree, cancel } from "../poly.js";
 import { proveprime, checkCertificate } from "../primeproof.js";
 import { equivalent } from "../verify.js";
 import { register, toContractVerification, unsupported } from "../orchestrate.js";
+import { MORE_COMMANDS, hasMatrix, matrixEval, matrixCheck } from "./compute-more.js";
 
 const V = (status, detail, name = "check") => toContractVerification([{ status, checks: [{ kind: name, ok: status !== "failed", detail }] }]);
 const exact = (tree, extra = {}) => ({ answers: [{ kind: "exact", tree, ...extra }], solutionStatus: "exact" });
@@ -27,6 +28,33 @@ const matOf = (u) => {
   if (s.k !== "matrix") throw unsupported("expected a matrix such as [[1, 2], [3, 4]]");
   return s;
 };
+const rowsOf = (M) => (M && M.k === "matrix" ? M.args.map((r) => (r.args ? r.args : [r])) : []);
+function isRREF(rows) {
+  let lead = -1;
+  for (let i = 0; i < rows.length; i++) {
+    const j = rows[i].findIndex((v) => v !== X.ZERO);
+    if (j < 0) { if (rows.slice(i).some((r) => r.some((v) => v !== X.ZERO))) return false; break; }
+    if (j <= lead || rows[i][j] !== X.ONE) return false;
+    if (rows.some((r, k) => k !== i && r[j] !== X.ZERO)) return false;
+    lead = j;
+  }
+  return true;
+}
+function floatRank(M) {
+  const A = M.map((r) => r.slice());
+  const rows = A.length, cols = rows ? A[0].length : 0;
+  const scale = Math.max(1, ...A.flat().map(Math.abs));
+  let rank = 0;
+  for (let c = 0; c < cols && rank < rows; c++) {
+    let p = rank;
+    for (let i = rank + 1; i < rows; i++) if (Math.abs(A[i][c]) > Math.abs(A[p][c])) p = i;
+    if (Math.abs(A[p][c]) <= 1e-9 * scale) continue;
+    [A[p], A[rank]] = [A[rank], A[p]];
+    for (let i = rank + 1; i < rows; i++) { const f = A[i][c] / A[rank][c]; for (let j = c; j < cols; j++) A[i][j] -= f * A[rank][j]; }
+    rank++;
+  }
+  return rank;
+}
 const logSteps = (env, steps) => { for (const st of steps || []) env.log.add(st); };
 
 // vectors: [1, 2, 3], or a matrix with one row or one column
@@ -106,8 +134,26 @@ const COMMANDS = {
       verify: () => { const d = L.det(A); return V(d === X.ZERO ? "verified-exact" : "failed", `det = ${toText(d)}`, "determinant"); } };
     return { ...exact(r.node), verify: () => { const ok = L.verifyInverse(A, r.node); const good = ok === true || (ok && ok.ok); return V(good ? "verified-exact" : "failed", "A times the inverse is the identity", "product-identity"); } };
   },
-  transpose(node) { const A = matOf(node.args[0]); return { ...exact(L.matrixNode(L.transpose(A))), verify: () => ({ status: "not-applicable", checks: [] }) }; },
-  trace(node) { const A = matOf(node.args[0]); return { ...exact(L.trace(A)), verify: () => ({ status: "not-applicable", checks: [] }) }; },
+  transpose(node) {
+    const A = matOf(node.args[0]);
+    const R = L.matrixNode(L.transpose(A));
+    return { ...exact(R), verify: () => {
+      // independent: entry (j, i) of the result is entry (i, j) of the input
+      const a = rowsOf(A), r = rowsOf(simplify(R));
+      const ok = r.length === (a[0] || []).length && a.every((row, i) => row.every((v, j) => r[j] && r[j][i] === v));
+      return V(ok ? "verified-exact" : "failed", "every entry (i, j) of the input is entry (j, i) of the result", "entries");
+    } };
+  },
+  trace(node) {
+    const A = matOf(node.args[0]);
+    const t = L.trace(A);
+    return { ...exact(t), verify: () => {
+      const a = rowsOf(A);
+      if (a.some((row) => row.length !== a.length)) return V("failed", "the trace needs a square matrix", "square");
+      const want = a.reduce((s, row, i) => s + L.evalFloat(row[i]), 0), got = L.evalFloat(simplify(t));
+      return V(Math.abs(want - got) <= 1e-9 * Math.max(1, Math.abs(want)) ? "verified-numeric" : "failed", `independent sum of the diagonal (${+want.toPrecision(12)}) agrees`, "recompute");
+    } };
+  },
   rank(node, env) {
     const A = matOf(node.args[0]);
     const rk = L.rank(A);
@@ -117,7 +163,17 @@ const COMMANDS = {
     const A = matOf(node.args[0]);
     const r = L.rref(A, { steps: true });
     logSteps(env, r.steps);
-    return { ...exact(r.node || L.matrixNode(r.matrix || r.R)), verify: () => ({ status: "not-applicable", checks: [] }) };
+    const R = r.node || L.matrixNode(r.matrix || r.R);
+    return { ...exact(R), verify: () => {
+      // independent: R is in reduced row echelon form (exact structure) and R is row-equivalent to A
+      // (floating-point ranks of A, R and A stacked on R are all equal)
+      const rr = rowsOf(simplify(R)), a = rowsOf(A);
+      const shape = isRREF(rr);
+      const fa = a.map((row) => row.map(L.evalFloat)), fr = rr.map((row) => row.map(L.evalFloat));
+      const ra = floatRank(fa), rR = floatRank(fr), rs = floatRank([...fa, ...fr]);
+      const ok = shape && ra === rR && rR === rs;
+      return V(ok ? "verified-numeric" : "failed", `reduced row echelon form; rank(A) = rank(R) = rank([A; R]) = ${ra}, so R is row-equivalent to A`, "row-equivalence");
+    } };
   },
   eigenvalues(node, env) {
     const A = matOf(node.args[0]);
@@ -209,10 +265,36 @@ const COMMANDS = {
       return V(good && primes ? "verified-exact" : "failed", good ? "the factors multiply back to n and each is prime" : "product mismatch", "multiply-back");
     } };
   },
-  gcd(node) { return gcdLcm(node, "gcd"); },
+  gcd(node) {
+    // gcd of polynomials: gcd(x^2 - 1, x^2 + 2x + 1)
+    if (node.args.length === 2 && node.args.some((a) => X.freeSymbols(a).size)) return MORE_COMMANDS.polygcd(node);
+    return gcdLcm(node, "gcd");
+  },
   lcm(node) { return gcdLcm(node, "lcm"); },
-  phi(node) { const n = bigOf(node.args[0]); return { ...exact(X.num(T.phi(n))), verify: () => ({ status: "not-applicable", checks: [] }) }; },
-  divisors(node) { const n = bigOf(node.args[0]); return { ...exact(X.set(...T.divisors(n).map((d) => X.num(d)))), verify: () => ({ status: "not-applicable", checks: [] }) }; },
+  phi(node) {
+    const n = bigOf(node.args[0]);
+    const v = T.phi(n);
+    return { ...exact(X.num(v)), verify: () => {
+      // independent: Euler's product over primes found by plain trial division
+      if (n < 1n || n > 10n ** 12n) return { status: "inconclusive", checks: [] };
+      let m = Number(n), r = Number(n);
+      for (let p = 2; p * p <= m; p++) if (m % p === 0) { while (m % p === 0) m /= p; r -= r / p; }
+      if (m > 1) r -= r / m;
+      return V(BigInt(Math.round(r)) === v ? "verified-exact" : "failed", `Euler's product over the primes dividing ${n} gives ${Math.round(r)}`, "euler-product");
+    } };
+  },
+  divisors(node) {
+    const n = bigOf(node.args[0]);
+    const ds = T.divisors(n);
+    return { ...exact(X.set(...ds.map((d) => X.num(d)))), verify: () => {
+      if (n < 1n || n > 10n ** 12n) return { status: "inconclusive", checks: [] };
+      const m = Number(n), got = [];
+      for (let d = 1; d * d <= m; d++) if (m % d === 0) { got.push(d); if (d * d !== m) got.push(m / d); }
+      got.sort((x, y) => x - y);
+      const ok = got.length === ds.length && got.every((d, i) => BigInt(d) === BigInt(ds[i]));
+      return V(ok ? "verified-exact" : "failed", `trial division finds the same ${got.length} divisors`, "trial-division");
+    } };
+  },
 };
 function gcdLcm(node, which) {
   const ns = node.args.map(bigOf);
@@ -227,6 +309,15 @@ function gcdLcm(node, which) {
   } };
 }
 
+// independent frequency count for mode
+function modeCheck(vals, modes, freq) {
+  const cnt = new Map();
+  for (const v of vals) { const k = Nm.toString(v); cnt.set(k, (cnt.get(k) || 0) + 1); }
+  const max = Math.max(...cnt.values());
+  const want = [...cnt].filter(([, c]) => c === max).map(([k]) => Nm.toFloat(Nm.fromDecimal ? vals.find((v) => Nm.toString(v) === k) : 0)).sort((a, b) => a - b);
+  const ok = max === 1 && vals.length > 1 ? modes.length === 0 : max === freq && want.length === modes.length && want.every((w, i) => Math.abs(w - modes[i]) < 1e-12);
+  return V(ok ? "verified-exact" : "failed", `independent count: the most frequent value${want.length > 1 ? "s occur" : " occurs"} ${max} time${max > 1 ? "s" : ""}`, "count");
+}
 for (const f of ["mean", "median", "mode", "variance", "stdev"]) {
   COMMANDS[f] = (node) => {
     const xs = (node.args.length === 1 && (node.args[0].k === "tuple" || node.args[0].k === "set" || node.args[0].k === "vector") ? node.args[0].args : node.args).map((a) => simplify(a));
@@ -234,7 +325,31 @@ for (const f of ["mean", "median", "mode", "variance", "stdev"]) {
     const vals = xs.map((a) => a.v);
     const fn = { mean: St.mean, median: St.median, mode: St.mode, variance: St.variance, stdev: St.stdDev }[f];
     const r = fn(vals);
+    if (f === "mode") {
+      if (r.noMode) return { answers: [{ kind: "none", label: "No mode: every value occurs once" }], solutionStatus: "exact", verify: () => modeCheck(vals, [], 1) };
+      const tree = r.modes.length === 1 ? r.modes[0] : X.set(...r.modes);
+      return { ...exact(tree), verify: () => modeCheck(vals, r.modes.map((m) => Nm.toFloat(m.v)), r.frequency) };
+    }
     const tree = r && r.k ? r : Array.isArray(r) ? X.set(...r.map((v) => (v.k ? v : X.num(v)))) : r && r.n !== undefined ? X.num(r) : r.value || r;
+    if ((f === "variance" || f === "stdev") && vals.length > 1) {
+      // textbooks differ on which one "the" standard deviation means, so give both, labelled
+      const pop = simplify(fn(vals, { population: true }));
+      const samp = simplify(tree);
+      const n = vals.length;
+      const word = f === "stdev" ? "standard deviation" : "variance";
+      return {
+        answers: [{ kind: "exact", tree: samp, label: `Sample ${word} (divide by n - 1)` }, { kind: "exact", tree: pop, label: `Population ${word} (divide by n)` }],
+        solutionStatus: "exact",
+        verify: () => {
+          const fl = vals.map((b) => Nm.toFloat(b)), m = fl.reduce((a, b) => a + b, 0) / n;
+          const ss = fl.reduce((a, b) => a + (b - m) ** 2, 0);
+          const wantS = f === "stdev" ? Math.sqrt(ss / (n - 1)) : ss / (n - 1), wantP = f === "stdev" ? Math.sqrt(ss / n) : ss / n;
+          const close = (w, t) => Math.abs(w - L.evalFloat(t)) < 1e-9 * Math.max(1, Math.abs(w));
+          const good = close(wantS, samp) && close(wantP, pop);
+          return V(good ? "verified-numeric" : "failed", `independent floating-point sample (${+wantS.toPrecision(12)}) and population (${+wantP.toPrecision(12)}) values agree`, "recompute");
+        },
+      };
+    }
     return { ...exact(simplify(tree)), verify: () => {
       const fl = vals.map((b) => Nm.toFloat(b)).sort((a, b) => a - b), n = fl.length;
       const m = fl.reduce((a, b) => a + b, 0) / n;
@@ -250,6 +365,20 @@ for (const f of ["mean", "median", "mode", "variance", "stdev"]) {
     } };
   };
 }
+
+Object.assign(COMMANDS, MORE_COMMANDS);
+
+// Matrix arithmetic written directly: products, sums, scalar multiples and integer powers.
+register({
+  id: "evaluate.matrix", kinds: ["arithmetic", "expression"], priority: 5,
+  run(node) {
+    if (!hasMatrix(node) || node.k === "matrix" || node.k === "fn" || X.freeSymbols(node).size) return null;
+    const r = matrixEval(node);
+    if (!r.m) return null;
+    const R = L.matrixNode(r.m);
+    return { ...exact(R), verify: () => matrixCheck(node, R) };
+  },
+});
 
 register({
   id: "compute.command", kinds: ["command"], priority: 20,

@@ -2,9 +2,9 @@
 // Precaches every Quelvra file and serves /quelvra/ GET requests network-first, falling back
 // to the cache when offline, so a deploy is never masked by stale engine modules. Every
 // successful response refreshes the cache. Requests outside /quelvra/ are never intercepted.
-// FILES and VERSION are generated: run `node tools/sw-files.mjs` before deploying.
+// FILES and VERSION are generated: run `node tools/quelvra-sw-files.mjs` before deploying.
 
-const VERSION = "quelvra-muij7fjy";
+const VERSION = "quelvra-muilacyt";
 const BASE = new URL("./", self.location).pathname; // "/" on its own site, "/quelvra/" on darknode.ai
 const FILES = [
   "",
@@ -33,13 +33,16 @@ const FILES = [
   "engine/calc/recur.js",
   "engine/calc/series.js",
   "engine/calc/sum.js",
+  "engine/discrete.js",
   "engine/domain.js",
   "engine/explain.js",
   "engine/expr.js",
   "engine/identify.js",
   "engine/interval.js",
+  "engine/language-more.js",
   "engine/language.js",
   "engine/linalg.js",
+  "engine/logic.js",
   "engine/mistakes.js",
   "engine/num.js",
   "engine/numeric.js",
@@ -83,11 +86,13 @@ const FILES = [
   "engine/strategies/analysis.js",
   "engine/strategies/basic.js",
   "engine/strategies/calculus.js",
+  "engine/strategies/compute-more.js",
   "engine/strategies/compute.js",
   "engine/strategies/integrate.js",
   "engine/strategies/research.js",
   "engine/strategies/solve.js",
   "engine/units.js",
+  "engine/verify-discrete.js",
   "engine/verify.js",
   "engine/vision/glyphs.js",
   "engine/vision/index.js",

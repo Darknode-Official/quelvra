@@ -1,7 +1,7 @@
 // Real double-precision special functions for the independent verifier (verify.js).
 // Written separately from the integrator's own numerics so a bug in one cannot hide a bug in
 // the other. Target accuracy is about 1e-13 relative (checked against mpmath in
-// test/specfun.test.js). Every function returns NaN outside its real domain.
+// test/quelvra/specfun.test.js). Every function returns NaN outside its real domain.
 //
 //   Si, Ci, Shi, Chi, Ei, li, erfi, erfc, FresnelS, FresnelC (normalised: integrand sin(pi t^2 / 2)),
 //   lambertw (principal branch W0)

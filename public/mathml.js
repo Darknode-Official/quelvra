@@ -51,7 +51,13 @@ function factorRank(f) {
   return 4;
 }
 const displayFactors = (fs) => fs.map((f, i) => [f, i]).sort((a, b) => factorRank(a[0]) - factorRank(b[0]) || a[1] - b[1]).map(([f]) => f);
+// a + bi: in a constant complex number the real part comes first (11 - 2i, not -2i + 11)
+const hasI = (t) => t === X.I || (t.args || []).some(hasI);
 export function displayTerms(u) {
+  const ts = displayTermsRaw(u);
+  return ts.some(hasI) && !ts.every(hasI) && X.freeSymbols(u).size === 0 ? [...ts.filter((t) => !hasI(t)), ...ts.filter(hasI)] : ts;
+}
+function displayTermsRaw(u) {
   return u.args
     .map((t, i) => [t, i])
     .sort((a, b) => degreeKey(b[0]) - degreeKey(a[0]) || leadNeg(a[0]) - leadNeg(b[0]) || a[1] - b[1])

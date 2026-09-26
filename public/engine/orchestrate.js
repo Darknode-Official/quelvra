@@ -71,11 +71,13 @@ function recognise(input, options) {
     try {
       const { node, warnings, congruence } = parseDetailed(t.math);
       return { tree: node, text: t.math, original: src, warnings, congruence, source: source === "text" ? "language" : source, confidence: srcConf * t.confidence,
-        interpretation: t.interpretation, goal: t.goal, variable: t.variable, notes: t.notes || [] };
+        interpretation: t.interpretation, goal: t.goal, variable: t.variable, domain: t.domain, notes: t.notes || [] };
     } catch (_) { /* fall through */ }
   }
   const words = unknownWords(src);
-  if (words.length >= 2 || words.some((w) => w.length >= 4)) {
+  // an English stop word ("of", "is", "the") would only parse as a product of letters: never math
+  const STOP = /^(of|is|as|by|if|an|the|to|for|in|with|from|over|where|when|find|what|then|that|than|are|was)$/i;
+  if (words.length >= 2 || words.some((w) => w.length >= 4 || STOP.test(w))) {
     const e = new Error(`Quelvra does not understand "${words[0]}". ${t.reason || ""}`.trim());
     e.pos = src.indexOf(words[0]); e.hint = "Write the math with symbols (2x + 3 = 11), or use one of the supported phrasings such as \"derivative of x^3\" or \"solve x^2 = 4\". Products of letters need a * or spaces: a*b*c.";
     return { error: e, text: src, source, languageReason: t.reason };
@@ -93,10 +95,11 @@ function recognise(input, options) {
 // ---- main entry ----
 export function solve(input, options = {}) {
   const t0 = now();
-  const domain = options.domain === "complex" ? "complex" : "real";
   const timeLimit = options.timeLimit || 8000;
   const opsLimit = options.ops || 3_000_000;
   const rec = recognise(input, options);
+  // "solve z^3 = 1 over the complex numbers": the sentence itself can choose the complex domain
+  const domain = options.domain === "complex" || (!options.domain && rec.domain === "complex") ? "complex" : "real";
   const base = {
     ok: false, input: { text: rec.text, tree: rec.tree || null, warnings: rec.warnings || [], interpretation: rec.interpretation || null, original: rec.original || null },
     recognition: { source: rec.source, confidence: rec.error ? 0 : rec.confidence },
