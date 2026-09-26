@@ -316,7 +316,7 @@ function twoNumbers(sents) {
   for (const p of Y_) nouns.push(noun(p, "y"));
   nouns.sort((a, b) => b.words.length - a.words.length);
   const eqs = [];
-  let asked = null;
+  let asked = null, ratio = false;
   for (const s0 of sents) {
     const s = s0.replace(/^(?:and )/, "");
     let m;
@@ -329,14 +329,25 @@ function twoNumbers(sents) {
       if ((m = new RegExp(`^their sum is ${Q}$`).exec(p))) { eqs.push(`x + y = ${M(m[1])}`); continue; }
       if ((m = new RegExp(`^their difference is ${Q}$`).exec(p))) { eqs.push(`x - y = ${M(m[1])}`); continue; }
       if ((m = new RegExp(`^their product is ${Q}$`).exec(p))) { eqs.push(`x*y = ${M(m[1])}`); continue; }
-      if ((m = /^(?:the )?(?:two |2 )?numbers are in the ratio (\d+) ?(?::|to) ?(\d+)$/.exec(p))) { eqs.push(`${m[2]}x = ${m[1]}y`); continue; }
+      if ((m = /^(?:the )?(?:two |2 )?numbers are in the ratio (\d+) ?(?::|to) ?(\d+)$/.exec(p))) {
+        const [a, b] = [+m[1], +m[2]];
+        if (!(a > 0 && b > 0)) return null;
+        // first/second keep the order of the ratio; otherwise x is the larger number (the larger
+        // share, and the one a "difference" subtracts from), so 2:5 never makes the larger number 2 parts
+        if (ordRole) eqs.push(`${b}x = ${a}y`);
+        else { if (a === b) return null; eqs.push(`${Math.min(a, b)}x = ${Math.max(a, b)}y`); }
+        ratio = true;
+        continue;
+      }
       const e = readEquation(p, nouns, ["x", "y"]);
       if (!e || e.ambiguous) return null;
       eqs.push(e.text);
     }
   }
   if (eqs.length !== 2) return null;
-  const who = sizeRole ? "x the larger number, y the smaller" : ordRole ? "x the first number, y the second" : "x one number, y the other";
+  // numbers shared in a ratio are positive parts: a negative solution means the story was misread
+  if (ratio && !sensible(eqs.join(", "), ["x", "y"], (v) => v > 0)) return null;
+  const who = sizeRole || (ratio && !ordRole) ? "x the larger number, y the smaller" : ordRole ? "x the first number, y the second" : "x one number, y the other";
   return result("word-two-numbers", eqs.join(", "), `let ${who}: ${eqs.join(", ")}${asked === "x" || asked === "y" ? ` (the question asks for ${asked})` : ""}`);
 }
 
@@ -517,6 +528,7 @@ function ages(sents) {
 export const _internal = { readPhrase, readEquation, noun, polyRoots, normaliseWords, sentencesOf };
 export { numberSentence, twoNumbers, consecutiveInts, ages };
 export { geometry, boxVolume, probability, unitRates, ratios, systems, angles };
+export { workMore, percentMore, interestMore, twoMovers, distanceExtra, mixtureMore, digitProblems, ratioMore };
 
 
 // ---------------------------------------------------------------- clause consumption
@@ -689,6 +701,7 @@ const NEG_VERB = /^(?:empty|empties|drain|drains|leak|leaks)\b/;
 function work(sents) {
   let m;
   const text = sents.join(". ");
+  if (!wSameJob(sents)) return null;
   // inverse proportion: N1 workers take T1; how long for N2 workers (same job)
   {
     let n1, w1, t1, u1, mm;
@@ -761,6 +774,9 @@ function work(sents) {
   const terms = clauses.map((c) => `${c.neg ? "- " : "+ "}1/${c.t}`).join(" ").replace(/^\+ /, "");
   if (want === "together") {
     if (together || clauses.length < 2 || clauses.every((c) => c.neg)) return null;
+    // the question's verb must be the job the positive rates do: "fill" with a drain against it, never "empty"
+    const q = sents[sents.length - 1];
+    if (/\b(?:empty|empties|emptied|drain|drained|drains)\b/.test(q) && !/\bempty (?:tank|pool|cistern|bucket|tub|reservoir|container|bath|bathtub|basin|jar|barrel)\b/.test(q)) return null;
     // the job only gets done if the combined rate is positive (a drain faster than the tap never fills it)
     if (!(clauses.reduce((a2, c) => a2 + (c.neg ? -1 : 1) / +c.t, 0) > 1e-12)) return impossible("it empties at least as fast as it fills, so the job is never done");
     const math = `${terms} = 1/t`;
@@ -1594,12 +1610,507 @@ function angles(sents) {
   return null;
 }
 
+// ================================================================ widening: more school phrasings
+// These run after the older templates of the same family and only see problems those refused.
+// Same rules as above: every sentence must be consumed by a known clause, every number must land
+// in a typed slot, and anything the story does not pin down refuses.
+
+// ---------------------------------------------------------------- work: fill, drain, together, alone
+const W_VERB = String.raw`(fill|fills|filled|empty|empties|emptied|drain|drains|drained|finish|finishes|do|does|complete|completes|paint|paints|mow|mows|clean|cleans|build|builds|print|prints|type|types|dig|digs|wash|washes|plough|ploughs|plow|plows|pack|packs|make|makes|repair|repairs|harvest|harvests|weed|weeds)`;
+const W_OBJ = String.raw`(?: (?:it|them|(?:a|an|the|this|that|same|whole) (?:[a-z]+ ){0,3}?[a-z]+))?`;
+const W_NOUN = String.raw`(?:inlet pipe|outlet pipe|drain pipe|pipe|tap|machine|pump|printer|hose|worker|valve|drain|faucet|robot|crew|team|painter|inlet|outlet|man|woman|boy|girl|person)`;
+const W_AG = String.raw`((?:pipe|tap|machine|pump|printer|hose|worker|valve|faucet|robot|crew|team|painter) [a-z]|(?:a|an|the|one|1|another|a second|the second|a third|the third|the first|the other)(?: large| small| larger| smaller| big| fast| slow| new| old)? ${W_NOUN}|[a-z]+)`;
+const W_NOT_NAME = new Set([...NAME_STOP, "both", "together", "working", "if", "when", "two", "three", "all", "each", "one", "another", "which", "who", "how", "what", "then", "alone", "can", "could", "will", "would", "pipe", "pipes", "tap", "taps", "tank", "pool", "cistern", "job", "work", "task", "is", "are", "was", "were", "be", "also", "only", "just", "there", "this", "that", "these", "those", "some", "someone", "nobody", "everyone", "we", "you", "i", "me", "us", "our", "your", "my"]);
+const wKind = (v) => (!v ? null : /^(?:fill|fills|filled)$/.test(v) ? "fill" : /^(?:empty|empties|emptied|drain|drains|drained)$/.test(v) ? "empty" : "job");
+const wKey = (a) => a.replace(/^(?:pipe|tap|machine|pump|printer|hose|worker|valve|faucet|robot|crew|team|painter) ([a-z])$/, "$1");
+function wAgentOk(a) {
+  if (/ /.test(a) || /^[a-z]$/.test(a)) return true; // "pipe a", "the second pump", or a letter name such as A or B
+  return !W_NOT_NAME.has(a) && !new RegExp(`^${W_VERB}$`).test(a);
+}
+const W_SOLO = String.raw`(?: alone| working alone| by (?:him|her|it)self| on (?:his|her|its) own)`;
+const W_TOG = String.raw`(?: together| working together| when working together| if they work together)`;
+const W_PL = String.raw`(?:they|them|both|both of them|them both|all of them|all three|all 3|both [a-z]+|the (?:two|2|three|3) [a-z]+|all (?:three |3 )?[a-z]+)`;
+const W_VESSEL = String.raw`(?:tank|pool|cistern|bucket|tub|reservoir|container|bath|bathtub|basin|jar|barrel|trough|pond)`;
+// every named job must be the same job: "paints a house" and "paints a fence" are two different jobs,
+// and "fills half the tank" is a part of one; either refuses
+const W_JOBWORDS = new Set(["job", "work", "piece of work", "task", "same job", "same work", "same task", "whole job", "whole work"]);
+function wSameJob(sents) {
+  const seen = new Set();
+  // "do/does" are left out: in "how long does the other machine take" they are not the job's verb
+  const re = new RegExp(`\\b${W_VERB.replace("|do|does", "")}(?: ((?:a|an|the|this|that|same|whole) [a-z ]+?))?(?= in \\d|,| and | together| alone| working| if | with | when |$)`, "g");
+  for (const s of sents) {
+    // a part of the job ("half the tank", "a third of it", "the rest of the work"); "a third pipe" is fine
+    if (/\b(?:half|halves|remaining|remainder)\b|%|\d\/\d|\b(?:third|thirds|quarter|quarters|fourth|fourths|fifth|fifths|part|parts|portion|fraction|rest) (?:of )?(?:the|it|a|an|this|that|its|his|her|their)\b/.test(s)) return false;
+    for (const m of s.matchAll(re)) {
+      if (!m[2]) continue;
+      const o = m[2].replace(/^(?:a|an|the|this|that)\s+/, "");
+      seen.add(W_JOBWORDS.has(o) ? "job" : o.replace(/^(?:same|whole) /, ""));
+    }
+  }
+  return seen.size <= 1;
+}
+function workMore(sents) {
+  if (!wSameJob(sents)) return null;
+  const st = { rates: [], tog: null, passive: false, last: null };
+  let want = null, askUnit = null, qKind = null, qAgent = null, coll = false;
+  const addRate = (ag, verb, t, u) => {
+    ag = wKey(ag);
+    if (!wAgentOk(ag) || st.rates.some((r) => r.ag === ag) || !(+t > 0)) return false;
+    const k = wKind(verb);
+    st.rates.push({ ag, kind: k, t, u: tKey(u) });
+    if (k) st.last = verb;
+    return true;
+  };
+  const clauses = [
+    [C(`(?:working together,? |together,? |when working together,? )?${W_AG} and ${W_AG}${W_TOG}?,? (?:can |could |will |would )?${W_VERB}${W_OBJ}${W_TOG}? in ${N} ${TU}${W_TOG}?`), (m) => {
+      if (!/together/.test(m[0]) || st.tog) return false;
+      const a = wKey(m[1]), b = wKey(m[2]);
+      if (a === b || !wAgentOk(a) || !wAgentOk(b) || !(+m[4] > 0)) return false;
+      st.tog = { a, b, kind: wKind(m[3]), t: m[4], u: tKey(m[5]) };
+    }],
+    [C(`(?:working together,? |together,? )?${W_AG} and ${W_AG}${W_TOG}? (?:take|need|would take|will take|require) ${N} ${TU}(?: to ${W_VERB}${W_OBJ})?${W_TOG}?`), (m) => {
+      if (!/together/.test(m[0]) || st.tog) return false;
+      const a = wKey(m[1]), b = wKey(m[2]);
+      if (a === b || !wAgentOk(a) || !wAgentOk(b) || !(+m[3] > 0)) return false;
+      st.tog = { a, b, kind: wKind(m[5]) || "job", t: m[3], u: tKey(m[4]) };
+    }],
+    [C(`(?:(?:2|two|3|three) (?:pipes|taps|machines|pumps|printers|hoses|workers|people|men|women|painters|robots)) (?:can |could )?${W_VERB}${W_OBJ} in ${N}(?: ${TU})?(?:,? ${N}(?: ${TU})?)?,? and ${N} ${TU} respectively`), (m) => {
+      const n = /^(?:3|three)/.test(m[0]) ? 3 : 2;
+      const ts = [m[2], m[4], m[6]].filter(Boolean);
+      if (ts.length !== n || [m[3], m[5]].some((u) => u && tKey(u) !== tKey(m[7]))) return false;
+      return ts.every((t, k) => addRate(`#${k + 1}`, m[1], t, m[7])) && ts.length === n;
+    }],
+    [C(`(?:a|an|the) (?:[a-z]+ )?${W_VESSEL} can be (filled|emptied|drained) by ${W_AG} in ${N} ${TU}`), (m) => { st.passive = true; return addRate(m[2], m[1], m[3], m[4]); }],
+    [C(`(?:it can be |can be )?(filled|emptied|drained) by ${W_AG} in ${N} ${TU}`), (m) => (st.passive ? addRate(m[2], m[1], m[3], m[4]) : false)],
+    [C(`${W_AG}${W_SOLO}?,? (?:can |could |will |would )?${W_VERB}${W_OBJ} in ${N} ${TU}${W_SOLO}?`), (m) => addRate(m[1], m[2], m[3], m[4])],
+    [C(`${W_AG}${W_SOLO}? (?:takes|needs|would take|will take|requires) ${N} ${TU}${W_SOLO}?(?: to ${W_VERB}${W_OBJ})?${W_SOLO}?`), (m) => addRate(m[1], m[4] || "do", m[2], m[3])],
+    // "pipe b in 30 minutes": the verb of the clause before it, in the same sentence
+    [C(`${W_AG} in ${N} ${TU}`), (m) => (st.last ? addRate(m[1], st.last, m[2], m[3]) : false)],
+  ];
+  const question = (s0) => {
+    let s = s0, m;
+    const pre = new RegExp(`^(?:if|when) ${W_PL} (?:are|is) (?:open|opened|turned on|switched on|working|running|used)(?: together| at the same time| simultaneously)?,? `);
+    if (pre.test(s)) { s = s.replace(pre, ""); coll = true; }
+    const suf = new RegExp(`(?: (?:with|using|if|when) ${W_PL}(?: are)? (?:open|opened|turned on|working|running|used|working together|together)|${W_TOG}| at the same time| simultaneously)$`);
+    if (suf.test(s)) { s = s.replace(suf, ""); coll = true; }
+    if ((m = new RegExp(`^(?:in )?how (?:long|many ${TU}) (?:will|would|does|do|can|could|should|did) (?:it take(?: (${W_PL}))?|(${W_PL})(?: take)?)(?: to)?(?: ${W_VERB}${W_OBJ})?$`).exec(s))) {
+      if (m[2] || m[3]) coll = true;
+      want = "together"; askUnit = m[1] || null; qKind = wKind(m[4]); return true;
+    }
+    if ((m = new RegExp(`^(?:in )?how (?:long|many ${TU}) (?:will|would|does) (?:it take )?(?:for )?(?:the |an |a )?(?:empty |full )?(?:[a-z]+ )?${W_VESSEL}(?: to)? (?:be |get |become )(full|filled|empty|emptied)$`).exec(s))) {
+      want = "together"; askUnit = m[1] || null; qKind = /full|filled/.test(m[2]) ? "fill" : "empty"; return true;
+    }
+    if ((m = new RegExp(`^how (?:long|many ${TU})(?: will it take| does it take| would it take)? to ${W_VERB}${W_OBJ}$`).exec(s))) {
+      want = "together"; askUnit = m[1] || null; qKind = wKind(m[2]); return true;
+    }
+    if (s !== s0) return false; // "together" / "if both are open" belong to a together question
+    if ((m = new RegExp(`^(?:in )?how (?:long|many ${TU}) (?:will|would|does|do|did|should) (?:it take )?${W_AG}(?: take| need| require)?(?: to ${W_VERB}${W_OBJ})?${W_SOLO}(?: to ${W_VERB}${W_OBJ})?$`).exec(s))) {
+      want = "other"; askUnit = m[1] || null; qAgent = wKey(m[2]); qKind = wKind(m[3] || m[4]); return true;
+    }
+    return false;
+  };
+  for (const s of sents) {
+    if (want === null && question(s)) continue;
+    st.last = null;
+    if (!consume(s.replace(/^if /, ""), clauses, st)) return null;
+  }
+  if (!want) return null;
+  const units = new Set([...st.rates.map((r) => r.u), ...(st.tog ? [st.tog.u] : []), ...(askUnit ? [tKey(askUnit)] : [])]);
+  if (units.size !== 1) return null;
+  const unit = [...units][0];
+  const notes = [`t is in ${unit}s.`, "Assumes each one works at a steady rate."];
+  if (want === "together") {
+    if (!coll || st.tog || st.rates.length < 2) return null;
+    const kinds = new Set(st.rates.map((r) => r.kind));
+    let target;
+    if (kinds.has("job")) { if (kinds.size !== 1 || (qKind && qKind !== "job")) return null; target = "job"; }
+    else if (kinds.size === 2) { if (qKind !== "fill") return null; target = "fill"; } // filling against a drain: the question must say fill
+    else { target = [...kinds][0]; if (qKind && qKind !== target) return null; }
+    const sign = (r) => (target === "job" || r.kind === target ? 1 : -1);
+    const total = st.rates.reduce((a, r) => a + sign(r) / +r.t, 0);
+    if (!(total > 1e-12)) return impossible("it empties at least as fast as it fills, so the job is never done");
+    const terms = st.rates.map((r) => `${sign(r) < 0 ? "- " : "+ "}1/${r.t}`).join(" ").replace(/^\+ /, "");
+    const math = `${terms} = 1/t`;
+    const what = target === "fill" ? "tanks filled" : target === "empty" ? "tanks emptied" : "jobs";
+    return result("word-work", math, `rates add (${what} per ${unit}${st.rates.some((r) => sign(r) < 0) ? "; the one working against it counts as negative" : ""}): ${math}, t in ${unit}s`, { variable: "t", notes });
+  }
+  // the other's time alone, from the time together and one time alone
+  const T = st.tog;
+  if (!T || st.rates.length !== 1) return null;
+  const known = st.rates[0];
+  if (![T.a, T.b].includes(known.ag) || ![T.a, T.b].includes(qAgent) || qAgent === known.ag) return null;
+  const ks = new Set([T.kind, known.kind, qKind].filter(Boolean));
+  if (ks.size > 1 || ks.has("empty")) return null;
+  if (!(+known.t > +T.t)) return impossible(`working together cannot be slower than ${known.ag} alone`);
+  const math = `1/${known.t} + 1/t = 1/${T.t}`;
+  const disp = (a) => (/^[a-z]$/.test(a) ? a.toUpperCase() : a);
+  return result("word-work", math, `rates add: ${disp(known.ag)} does 1/${known.t} of the job per ${unit}, together they do 1/${T.t}; t = ${disp(qAgent)}'s time alone: ${math}`, { variable: "t", notes });
+}
+
+// ---------------------------------------------------------------- percent: successive changes, markups, tax, reverse
+const P_THING = String.raw`(?:[a-z']+ ){0,3}?[a-z]+`;
+const P_UP = /^(?:increased|raised|marked up|increases|rises|rose|grows|grew|goes up|went up|appreciates|appreciated|gains|gained)$/;
+const P_DOWN = /^(?:decreased|reduced|discounted|marked down|cut|lowered|decreases|falls|fell|drops|dropped|declines|declined|goes down|went down|depreciates|depreciated|loses|lost)$/;
+const P_CHG = String.raw`(increased|raised|marked up|decreased|reduced|discounted|marked down|cut|lowered)`;
+const P_CHG_ACT = String.raw`(increases|rises|grows|goes up|appreciates|gains|decreases|falls|drops|declines|goes down|depreciates|loses)`;
+const P_NOUN = String.raw`(?:price|cost|value|salary|wage|rent|fare|population|enrollment|enrolment|attendance|income|revenue|profit|weight)`;
+const sgn = (w, p) => (P_UP.test(w) ? +p : P_DOWN.test(w) ? -p : null);
+function percentMore(sents) {
+  const st = { ch: [] };
+  let want = null, noun = null;
+  const addCh = (w, p) => { const v = sgn(w, p); if (v === null || !(Math.abs(v) > 0)) return false; st.ch.push(v); return true; };
+  const clauses = [
+    // a $200 coat is discounted by 20% and then by a further 10%
+    [C(`(?:a|an|the) ${N} dollars ${P_THING} (?:is|was|gets) ${P_CHG} by ${N}%(?:,? and then|,? then|,? and) (?:${P_CHG} )?by (?:a further |another |an additional |a second |a further )?${N}%`), (m) => set1(st, "B", +m[1]) && addCh(m[2], m[3]) && addCh(m[4] || m[2], m[5])],
+    // a price of $40 is increased by 10% and then decreased by 10%
+    [C(`(?:a|the) ${P_NOUN} of ${N} dollars (?:is|was) ${P_CHG} by ${N}%(?:,? and then|,? then|,? and) ${P_CHG} by ${N}%`), (m) => set1(st, "B", +m[1]) && addCh(m[2], m[3]) && addCh(m[4], m[5])],
+    // a salary of $3000 is increased by 4%
+    [C(`(?:a|the) (${P_NOUN.slice(3, -1)}) of ${N}(?: dollars)? (?:is|was) ${P_CHG} by ${N}%`), (m) => { noun = m[1]; return set1(st, "B", +m[2]) && addCh(m[3], m[4]); }],
+    // a car worth $20000 depreciates by 15%
+    [C(`(?:a|an|the) ${P_THING} (?:worth|valued at|costing|priced at) ${N} dollars ${P_CHG_ACT}(?: in value)? by ${N}%`), (m) => set1(st, "B", +m[1]) && addCh(m[2], m[3])],
+    // successive discounts of 20% and 10% are applied to a price of $50
+    [C(`successive discounts of ${N}% and ${N}% are (?:applied|given|offered) (?:to|on) (?:a (?:price|marked price|list price) of|an? ${P_THING} (?:costing|priced at|marked at|worth)) ${N} dollars`), (m) => set1(st, "B", +m[3]) && addCh("discounted", m[1]) && addCh("discounted", m[2])],
+    // a shopkeeper buys a chair for $120 and marks it up by 25%
+    [C(`(?:a|an|the) [a-z]+ (?:buys|bought|purchases|purchased) (?:a|an|the) ${P_THING} for ${N} dollars and marks it up by ${N}%`), (m) => set1(st, "B", +m[1]) && addCh("marked up", m[2]) && set1(st, "markup", true)],
+    // a pair of shoes costs $60 before tax. the sales tax is 7.5%
+    [C(`(?:a|an|the) ${P_THING} (?:costs|is priced at|is) ${N} dollars before (?:sales )?tax`), (m) => set1(st, "B", +m[1]) && set1(st, "pretax", true)],
+    [C(`(?:the )?(?:sales )?tax(?: rate)? is ${N}%`), (m) => set1(st, "tax", +m[1])],
+    // a phone is sold for $360 after a 10% discount
+    [C(`(?:a|an|the) ${P_THING} (?:is|was) (?:sold|bought|offered|priced) (?:for|at) ${N} dollars after a ${N}% (discount|reduction|markdown|increase|markup)`), (m) => set1(st, "F", +m[1]) && addCh(/increase|markup/.test(m[3]) ? "increased" : "discounted", m[2])],
+    // after a 20% increase, the price of a ticket is $60
+    [C(`after a ${N}% (increase|rise|markup|discount|reduction|decrease|markdown),? the price of (?:a|an|the) ${P_THING} is ${N} dollars`), (m) => set1(st, "F", +m[3]) && addCh(/increase|rise|markup/.test(m[2]) ? "increased" : "discounted", m[1])],
+    // the price of a book including 5% tax is $42
+    [C(`the price of (?:a|an|the) ${P_THING} including (?:a )?${N}% (?:sales )?tax is ${N} dollars`), (m) => set1(st, "tax", +m[1]) && set1(st, "F", +m[2]) && set1(st, "incl", true)],
+    // a dress marked at $80 is sold at a 15% discount
+    [C(`(?:a|an|the) ${P_THING} (?:marked|priced|listed|tagged) at ${N} dollars (?:is|was) (?:sold|offered) at a ${N}% (?:discount|reduction)`), (m) => set1(st, "B", +m[1]) && addCh("discounted", m[2]) && set1(st, "single", true)],
+    // the population of a town increased from 2500 to 3000
+    [C(`(?:the |a )?(${P_NOUN.slice(3, -1)})(?: of (?:a |an |the )?[a-z]+(?: [a-z]+)?)? (increased|rose|went up|grew|decreased|fell|went down|dropped|declined) from ${N}(?: dollars)? to ${N}(?: dollars)?`), (m) => {
+      const dir = +m[4] > +m[3] ? "increase" : +m[4] < +m[3] ? "decrease" : null;
+      const said = /incr|rose|up|grew/.test(m[2]) ? "increase" : "decrease";
+      return dir !== null && said === dir && +m[3] > 0 && set1(st, "from", +m[3]) && set1(st, "to", +m[4]) && set1(st, "dir", dir);
+    }],
+  ];
+  const Q = [
+    [/^what is the (final|new|selling|sale) price$|^what is the price after (?:both|the 2|the two) (?:discounts|changes)$/, (m) => { want = m[1] === "selling" ? "sell" : "final"; if (noun && noun !== "price") return false; }],
+    [/^what is (?:the|its|his|her) new (salary|wage|rent|value|price|fare|cost|population)$/, (m) => { want = "final"; if (noun && m[1] !== noun) return false; }],
+    [/^what is the total(?: price| cost| bill| amount)?$/, () => { want = "total"; }],
+    [/^what (?:is|was) the price (?:before|without|excluding) (?:the )?(?:sales )?tax$|^what (?:is|was) the pre-tax price$/, () => { want = "pretax"; }],
+    [/^what (?:was|is) the original price$|^what was the price before the (?:discount|increase)$/, () => { want = "orig"; }],
+    [/^what is the discount(?: amount)?$|^what is the amount of (?:the )?discount$|^how much is the discount$/, () => { want = "disc"; }],
+    [/^what is the percent(?:age)? (increase|decrease)$|^by what percent(?:age)? did (?:it|the [a-z]+) (increase|decrease)$/, (m) => { want = "pct:" + (m[1] || m[2]); }],
+  ];
+  if (!runFacts(sents, clauses, Q, st) || !want) return null;
+  if (st.ch.some((c) => !(c > -100))) return impossible("a discount or decrease must be less than 100%");
+  const has = (...ks) => ks.every((k) => st[k] !== undefined);
+  const only = (...ks) => Object.keys(st).every((k) => k === "ch" || ks.includes(k));
+  const fac = (c) => `(1 ${c < 0 ? "-" : "+"} ${Math.abs(c)}/100)`;
+  const facTxt = (c) => `(1 ${c < 0 ? "-" : "+"} ${Math.abs(c)}%)`;
+  const money = /\bdollars\b/.test(sents.join(" ")) && !/^pct:/.test(want);
+  const ev = (math, interp) => result("word-percent", math, interp, { goal: "evaluate", notes: money ? ["The answer is in dollars."] : [] });
+  switch (want) {
+    case "final": case "sell":
+      if (!has("B") || !st.ch.length || !only("B", "markup", "single") || (want === "sell") !== !!st.markup) return null;
+      if (st.markup) return ev(`${st.B}*${fac(st.ch[0])}`, `selling price = cost x (1 + markup) = ${st.B} x ${facTxt(st.ch[0])}`);
+      return ev(`${st.B}*${st.ch.map(fac).join("*")}`, `each change multiplies the amount: ${st.B} x ${st.ch.map(facTxt).join(" x ")}${st.ch.length > 1 ? " (the second change applies to the already changed amount)" : ""}`);
+    case "total":
+      if (!has("B", "tax", "pretax") || st.ch.length || !only("B", "tax", "pretax")) return null;
+      return ev(`${st.B}*(1 + ${st.tax}/100)`, `total = price x (1 + tax rate) = ${st.B} x (1 + ${st.tax}%)`);
+    case "pretax":
+      if (!has("F", "tax", "incl") || st.ch.length || !only("F", "tax", "incl")) return null;
+      return result("word-percent", `x*(1 + ${st.tax}/100) = ${st.F}`, `let x be the price before tax: x (1 + ${st.tax}%) = ${st.F}`, { variable: "x", notes: ["x is in dollars."] });
+    case "orig":
+      if (!has("F") || st.ch.length !== 1 || !only("F")) return null;
+      return result("word-percent", `x*${fac(st.ch[0])} = ${st.F}`, `let x be the original price: x ${facTxt(st.ch[0])} = ${st.F}`, { variable: "x", notes: ["x is in dollars."] });
+    case "disc":
+      if (!has("B", "single") || st.ch.length !== 1 || st.ch[0] > 0 || !only("B", "single")) return null;
+      return ev(`${st.B}*${-st.ch[0]}/100`, `discount = marked price x rate = ${st.B} x ${-st.ch[0]}%`);
+    default: {
+      if (!has("from", "to", "dir") || st.ch.length || !only("from", "to", "dir") || want.slice(4) !== st.dir) return null;
+      const math = st.dir === "increase" ? `(${st.to} - ${st.from})/${st.from}*100` : `(${st.from} - ${st.to})/${st.from}*100`;
+      return result("word-percent", math, `percent ${st.dir} = ${st.dir === "increase" ? "(new - old)" : "(old - new)"}/old x 100 = ${math}`, { goal: "evaluate", notes: ["The answer is a percentage."] });
+    }
+  }
+}
+
+// ---------------------------------------------------------------- interest: amounts, time and principal
+const I_KIND = String.raw`(simple interest|compound interest compounded ${FREQ_RE}|compound interest|interest compounded ${FREQ_RE}|compounded ${FREQ_RE})`;
+function iKind(s, f1, f2, f3) {
+  if (/^simple/.test(s)) return { simple: true };
+  return { freq: f1 || f2 || f3 || (/^compound interest$/.test(s) ? "annually" : null) };
+}
+function interestMore(sents) {
+  let m;
+  if (sents.length !== 1) return null;
+  const s = sents[0];
+  const ev = (math, interp, notes = []) => result("word-interest", math, interp, { goal: "evaluate", notes: ["The answer is in dollars.", ...notes] });
+  const amount = (P, r, t, k) => {
+    if (k.simple) return ev(`${P}*(1 + ${r}/100*${t})`, `simple interest: amount A = P (1 + r t) = ${P} x (1 + ${r}% x ${t})`);
+    if (!k.freq) return null;
+    const a = amountText(P, r, t, k.freq);
+    return ev(a.math, a.how);
+  };
+  // what will $1000 amount to in 3 years at 5% interest compounded annually
+  if ((m = new RegExp(`^what will ${N} dollars amount to (?:in|after) ${N} years? at ${N}%${PER} ${I_KIND}$`).exec(s))) return amount(m[1], m[3], m[2], iKind(m[4], m[5], m[6], m[7]));
+  if ((m = new RegExp(`^what will ${N} dollars amount to (?:in|after) ${N} years? at ${N}%${PER}$`).exec(s))) return null; // simple or compound is not said
+  // find the amount of $6000 at 5% simple interest for 4 years
+  if ((m = new RegExp(`^(?:find|what is|calculate) the (?:final )?amount (?:of|on|for) ${N} dollars (?:invested |deposited |borrowed )?at ${N}%${PER} ${I_KIND} (?:for|over|after) ${N} years?$`).exec(s))) return amount(m[1], m[2], m[7], iKind(m[3], m[4], m[5], m[6]));
+  // in how many years will $800 earn $200 simple interest at 5% per year
+  if ((m = new RegExp(`^(?:in )?how many years will (?:it take )?(?:for )?${N} dollars (?:to )?(?:earn|give|yield) ${N} dollars (?:(?:in|of|as) )?simple interest at ${N}%${PER}$`).exec(s)))
+    return result("word-interest", `${m[1]}*${m[3]}/100*t = ${m[2]}`, `simple interest P r t = I: ${m[1]} x ${m[3]}% x t = ${m[2]}`, { variable: "t", notes: ["t is in years."] });
+  // what principal will amount to $1320 in 2 years at 5% simple interest
+  if ((m = new RegExp(`^what (?:principal|sum|amount)(?: of money)? will amount to ${N} dollars in ${N} years? at ${N}%${PER} simple interest$`).exec(s)))
+    return result("word-interest", `P*(1 + ${m[3]}/100*${m[2]}) = ${m[1]}`, `simple interest: P (1 + r t) = A, so P x (1 + ${m[3]}% x ${m[2]}) = ${m[1]}`, { variable: "P", notes: ["P is in dollars."] });
+  return null;
+}
+
+// ---------------------------------------------------------------- distance: two movers meeting or separating
+const D_ONE = String.raw`(?:car|train|bus|truck|plane|boat|bike|bicycle|cyclist|runner|jogger|walker|swimmer|driver|motorcyclist|ship|jet|hiker|biker|friend|person|man|woman|boy|girl|van|motorbike|scooter|horse)`;
+const D_MANY = String.raw`(?:cars|trains|buses|trucks|planes|boats|bikes|bicycles|cyclists|runners|joggers|walkers|swimmers|drivers|motorcyclists|ships|jets|hikers|bikers|friends|people|men|women|boys|girls|vans|motorbikes|scooters|horses)`;
+const D_FILL = new Set(["a", "an", "the", "and", "at", "from", "of", "on", "same", "time", "start", "starts", "started", "starting", "leave", "leaves", "left", "leaving", "set", "sets", "setting", "out", "depart", "departs", "departing", "begin", "begins", "point", "place", "spot", "location", "town", "city", "station", "village", "towns", "cities", "places", "points", "stations", "villages", "travel", "travels", "traveling", "travelling", "drive", "drives", "driving", "move", "moves", "moving", "ride", "rides", "riding", "walk", "walks", "walking", "fly", "flies", "flying", "run", "runs", "running", "go", "goes", "going", "head", "heads", "heading", "cycle", "cycles", "cycling", "sail", "sails", "sailing", "then", "respectively", "they", "one", "other", "road", "track", "highway", "route", "path", "line", "speeds", "speed", "with", "is", "are", "along", "that", "which", "simultaneously"]);
+function twoMovers(sents) {
+  if (sents.length < 2 || sents.length > 3) return null;
+  const facts = sents.slice(0, -1).join(" and ");
+  const q = sents[sents.length - 1];
+  if (!new RegExp(`\\b(?:(?:2|two) ${D_MANY}|(?:a|an|the) ${D_ONE} and (?:a|an|the) ${D_ONE})\\b`).test(facts)) return null;
+  let rest = facts, m;
+  const rates = [];
+  let D = null, dir = null, sameStart = false;
+  const take = (re, f) => { let mm; while ((mm = re.exec(rest))) { if (f(mm) === false) return false; rest = rest.slice(0, mm.index) + " " + rest.slice(mm.index + mm[0].length); } return true; };
+  // numbers go into typed slots; each regex removes what it read
+  if (!take(new RegExp(`\\bat (?:speeds of )?${N} ?${RATEU}(?:,? and (?:the other at )?${N} ?${RATEU})?`), (mm) => { rates.push([mm[1], mm[2]]); if (mm[3]) rates.push([mm[3], mm[4]]); })) return null;
+  if (!take(new RegExp(`\\b(?:2 |two )?(?:${D_MANY} |towns |cities |places |points |stations |villages )?(?:that are |which are )?${N} ${LU} apart\\b`), (mm) => { if (D !== null) return false; D = [mm[1], mm[2]]; })) return null;
+  if (!take(/\b(?:toward|towards) each other\b/, () => { if (dir && dir !== "toward") return false; dir = "toward"; })) return null;
+  if (!take(/\bin opposite directions\b/, () => { if (dir && dir !== "opposite") return false; dir = "opposite"; })) return null;
+  if (!take(/\bin the same direction\b/, () => { if (dir && dir !== "same") return false; dir = "same"; })) return null;
+  if (!take(/\bthe same (?:point|place|spot|location|town|city|station|village)\b/, () => { sameStart = true; })) return null;
+  if (!take(new RegExp(`\\b(?:1|one)(?: ${D_ONE})? (?=(?:goes|travels|drives|moves|rides|flies|runs|walks|cycles|sails|averages)\\b)`), () => {})) return null;
+  if (!take(new RegExp(`\\b(?:2|two) ${D_MANY}\\b|\\b(?:a|an|the) ${D_ONE} and (?:a|an|the) ${D_ONE}\\b|\\b(?:a|an|the|one) ${D_ONE}\\b`), () => {})) return null;
+  // what is left must be filler: no numbers, no timing words ("later", "earlier"), no unknown words
+  const left = rest.replace(/,/g, " ").split(/\s+/).filter(Boolean);
+  if (!left.every((w) => D_FILL.has(w))) return null;
+  if (rates.length !== 2 || !dir) return null;
+  const R1 = rKey(rates[0][1]), R2 = rKey(rates[1][1]);
+  if (!R1 || !R2 || R1.join() !== R2.join()) return null;
+  const [r1, r2] = [rates[0][0], rates[1][0]];
+  if (!(+r1 > 0 && +r2 > 0)) return null;
+  const rel = dir === "same" ? Math.abs(r1 - r2) : +r1 + +r2;
+  if (!(rel > 0)) return impossible("at equal speeds in the same direction the distance between them never changes");
+  const relS = dir === "same" ? `${Math.max(+r1, +r2)} - ${Math.min(+r1, +r2)}` : `${r1} + ${r2}`;
+  const notes = (u) => [`The answer is in ${u}.`];
+  // when do they meet: toward each other from a known distance apart
+  if ((m = new RegExp(`^(?:after |in )?(?:how (?:long|many ${TU})|when)(?: will it take| does it take)?(?: (?:until|before|for))? (?:will |do |does |would |did )?(?:they|them|the ${D_MANY})(?: to)? meet(?: each other)?$`).exec(q))) {
+    if (dir !== "toward" || !D || sameStart || lKey(D[1]) !== R1[0] || (m[1] && tKey(m[1]) !== R1[1])) return null;
+    const math = `(${r1} + ${r2})t = ${D[0]}`;
+    return result("word-distance", math, `moving toward each other, the gap of ${D[0]} ${R1[0]} closes at ${r1} + ${r2} ${R1[0]} per ${R1[1]}: ${math}, t in ${R1[1]}s`, { variable: "t", notes: [`t is in ${R1[1]}s.`] });
+  }
+  if (dir === "toward" || !sameStart || D) return null; // separating: both start at the same place, no initial gap
+  // after how many hours will they be 45 km apart
+  if ((m = new RegExp(`^(?:after |in )?how (?:long|many ${TU})(?: will it take| does it take)?(?: (?:until|before|for))? (?:will |do |does |would )?(?:they|them)(?: to)? (?:be|are|get) ${N} ${LU} apart$`).exec(q))) {
+    if (lKey(m[3]) !== R1[0] || (m[1] && tKey(m[1]) !== R1[1])) return null;
+    const math = `(${relS})t = ${m[2]}`;
+    return result("word-distance", math, `the distance between them grows at ${relS} ${R1[0]} per ${R1[1]} (${dir === "same" ? "same direction: the difference of the speeds" : "opposite directions: the sum of the speeds"}): ${math}, t in ${R1[1]}s`, { variable: "t", notes: [`t is in ${R1[1]}s.`] });
+  }
+  // how far apart are they after 3 hours
+  if ((m = new RegExp(`^(?:how far apart (?:are|will|would) they(?: be)?|what is the distance between them) after ${N} ${TU}$`).exec(q))) {
+    if (tKey(m[2]) !== R1[1]) return null;
+    const math = `(${relS})*${m[1]}`;
+    return result("word-distance", math, `the distance between them grows at ${relS} ${R1[0]} per ${R1[1]}: (${relS}) x ${m[1]}, in ${R1[0]}`, { goal: "evaluate", notes: notes(R1[0]) });
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- distance: catching up, streams
+const D_BOAT = String.raw`(?:boat|ship|swimmer|kayak|kayaker|canoe|canoeist|rower|motorboat|man|woman|boy|girl|person|steamer|launch)`;
+function distanceExtra(sents) {
+  let m, mm;
+  // a train leaves a station at 60 km/h. three hours later a faster train leaves the same station on the same track at 90 km/h
+  if (sents.length === 3 && (m = new RegExp(`^(?:a|the) (${D_ONE}) (?:leaves|sets out from|departs|departs from|starts from|leaves from) (?:a|the) (station|town|city|place|point|house|school|depot|garage|airport) (?:traveling |travelling |driving |going |moving )?at ${N} ?${RATEU}$`).exec(sents[0]))
+    && (mm = new RegExp(`^${N} ${TU} later,? (?:a|the) (?:second |faster |second faster |faster second )?(${D_ONE}) (?:leaves|sets out from|departs|departs from|starts from|leaves from) the same (station|town|city|place|point|house|school|depot|garage|airport) (?:on|along|following|in) the same (?:track|route|road|direction|path|highway|line) (?:traveling |travelling |driving |going |moving )?at ${N} ?${RATEU}$`).exec(sents[1]))) {
+    const [, v1, p1, r1, u1] = m, [, h, hu, v2, p2, r2, u2] = mm, R1 = rKey(u1), R2 = rKey(u2);
+    if (v1 !== v2 || p1 !== p2 || !R1 || !R2 || R1.join() !== R2.join() || tKey(hu) !== R1[1]) return null;
+    if (!new RegExp(`^how (?:long|many ${TU})(?: after the second ${v1} (?:leaves|starts|departs))? (?:will|does|would) (?:it|the second ${v1}) (?:take to )?(?:catch up (?:with|to) |catch |overtake )the first(?: ${v1})?$`).test(sents[2])) return null;
+    const qu = /how many (\w+)/.exec(sents[2]);
+    if (qu && tKey(qu[1]) !== R1[1]) return null;
+    if (!(+r2 > +r1)) return impossible("the second one is not faster, so it never catches up");
+    const math = `${r1}(t + ${h}) = ${r2}t`;
+    return result("word-distance", math, `t = ${R1[1]}s after the second ${v1} leaves; when it catches up both have gone the same distance: ${math}`, { variable: "t", notes: [`t is in ${R1[1]}s.`] });
+  }
+  // streams: still-water speed and current given, or two legs given
+  const st = { b: null, c: null, legs: [] };
+  const setv = (k, v, u) => { const R = rKey(u); if (!R || st[k] !== null) return false; st[k] = +v; st.unit = st.unit ? (st.unit === R.join() ? st.unit : "!") : R.join(); return st.unit !== "!"; };
+  const DIR = String.raw`(upstream|downstream|with the current|against the current)`;
+  const clauses = [
+    [C(`(?:the )?speed of (?:a|an|the) ${D_BOAT} in still water is ${N} ?${RATEU}`), (x) => setv("b", x[1], x[2])],
+    [C(`(?:a|an|the) ${D_BOAT}'s speed in still water is ${N} ?${RATEU}`), (x) => setv("b", x[1], x[2])],
+    [C(`(?:a|an|the) ${D_BOAT} (?:can )?(?:travels?|moves?|goes|go|rows?|sails?|swims?|paddles?) at ${N} ?${RATEU} in still water`), (x) => setv("b", x[1], x[2])],
+    [C(`(?:the )?(?:speed of the )?(?:current|stream|river)(?: speed)? is ${N} ?${RATEU}`), (x) => setv("c", x[1], x[2])],
+    [C(`(?:the )?(?:current|stream|river) (?:flows|runs|moves) at ${N} ?${RATEU}`), (x) => setv("c", x[1], x[2])],
+    [C(`(?:a|an|the) ${D_BOAT} (?:goes|travels|rows|sails|swims|moves|covers|paddles) ${N} ${LU} ${DIR} in ${N} ${TU}`), (x) => { st.legs.push(x.slice(1, 6)); }],
+    [C(`${N} ${LU} ${DIR} in ${N} ${TU}`), (x) => (st.legs.length ? (st.legs.push(x.slice(1, 6)), true) : false)],
+  ];
+  let want = null;
+  const Q = [
+    [new RegExp(`^how (?:long|many ${TU}) will it take(?: (?:the ${D_BOAT}|it|him|her|them))? to (?:travel|go|row|sail|swim|cover|paddle|move) ${N} ${LU} ${DIR}$`), (x) => { want = { k: "time", u: x[1], d: x[2], lu: x[3], dir: x[4] }; }],
+    [/^(?:what is|find) the speed of the (?:current|stream|river|water)$/, () => { want = { k: "c" }; }],
+    [new RegExp(`^(?:what is|find) (?:the |his |her |its |their )?speed(?: of the ${D_BOAT})? in still water$`), () => { want = { k: "b" }; }],
+  ];
+  if (!runFacts(sents, clauses, Q, st) || !want) return null;
+  const down = (d) => /down|with/.test(d);
+  if (want.k === "time") {
+    if (st.b === null || st.c === null || st.legs.length) return null;
+    const [L, T] = st.unit.split(",");
+    if (lKey(want.lu) !== L || (want.u && tKey(want.u) !== T)) return null;
+    if (!(st.b > st.c && st.c >= 0)) return impossible("the boat must be faster than the current to go upstream");
+    const sp = down(want.dir) ? `(${st.b} + ${st.c})` : `(${st.b} - ${st.c})`;
+    const math = `${want.d}/${sp}`;
+    return result("word-distance", math, `${down(want.dir) ? "downstream the current adds: speed = b + c" : "upstream the current subtracts: speed = b - c"}; time = distance / speed = ${want.d}/${sp}, in ${T}s`, { goal: "evaluate", notes: [`The answer is in ${T}s.`] });
+  }
+  // two legs, one each way
+  if (st.b !== null || st.c !== null || st.legs.length !== 2) return null;
+  const [l1, l2] = st.legs;
+  if (down(l1[2]) === down(l2[2]) || lKey(l1[1]) !== lKey(l2[1]) || tKey(l1[4]) !== tKey(l2[4])) return null;
+  const [dn, up] = down(l1[2]) ? [l1, l2] : [l2, l1];
+  if (!(+dn[0] / +dn[3] > +up[0] / +up[3] && +up[0] / +up[3] > 0)) return impossible("going with the current must be faster than going against it");
+  const math = `b + c = ${dn[0]}/${dn[3]}, b - c = ${up[0]}/${up[3]}`;
+  return result("word-distance", math, `b = speed in still water, c = speed of the current (${lKey(l1[1])} per ${tKey(l1[4])}): downstream b + c, upstream b - c: ${math} (the question asks for ${want.k})`, { notes: [`Speeds are in ${lKey(l1[1])} per ${tKey(l1[4])}.`] });
+}
+
+// ---------------------------------------------------------------- mixtures: more phrasings
+function mixtureMore(sents) {
+  let m;
+  const same = (a, b) => unitKey(a) === unitKey(b);
+  const subst = (a, b) => !a || !b || a === b;
+  const between = (p, q, r) => Math.min(+p, +q) < +r && +r < Math.max(+p, +q);
+  const GET = String.raw`to (?:get|make|obtain|produce|give|form|yield|create)(?: it(?: into)?)?`;
+  const ADD = String.raw`(?:must|should|needs to|need to|has to|have to|will need to) be (?:added to|mixed with|combined with)`;
+  if (sents.length === 1) {
+    const one = sents[0];
+    // how many liters of water must be added to 30 liters of a 20% sugar solution to make it a 15% solution
+    if ((m = new RegExp(`^how (?:many|much) (?:${MU} (?:of )?)?(?:pure |distilled )?water ${ADD} ${N} ${MU} (?:of )?${PCT} ${GET} ${PCT}$`).exec(one))) {
+      const [, u1, V, u2, q, s2, s2b, r, s3, s3b] = m;
+      if ((u1 && !same(u1, u2)) || !subst(s2 || s2b, s3 || s3b)) return null;
+      if (!between(0, q, r)) return impossible(`adding water cannot turn a ${q}% solution into a ${r}% one`);
+      const math = `${q}*${V} = ${r}(${V} + x)`;
+      return result("word-mixture", math, `let x be the ${unitKey(u2)}s of water added; the dissolved amount stays the same: ${math}`, { variable: "x", notes: [`x is in ${unitKey(u2)}s.`] });
+    }
+    // how many kilograms of tea costing $8 per kg must be mixed with 20 kg of tea costing $5 per kg to get a mixture costing $6 per kg
+    const PR = String.raw`(?:worth|costing|that costs|which costs|priced at|at) ${N} dollars (?:per|a|an|each) ${MU}`;
+    if ((m = new RegExp(`^how (?:many|much) ${MU} of ([a-z]+(?: [a-z]+)?) ${PR} ${ADD} ${N} ${MU} of ([a-z]+(?: [a-z]+)?) ${PR} ${GET} (?:a |the )?(?:mixture|blend) ${PR}$`).exec(one))) {
+      const [, u0, i1, p, u1, V, uV, i2, q, u2, r, u3] = m;
+      if (![u1, uV, u2, u3].every((x) => same(x, u0)) || sing(i1) !== sing(i2)) return null;
+      if (!between(p, q, r)) return impossible(`a mixture at ${r} dollars cannot be made from ${p} and ${q} dollars`);
+      const math = `${p}x + ${q}*${V} = ${r}(x + ${V})`;
+      return result("word-mixture", math, `let x be the ${unitKey(u0)}s at ${p} dollars; the total value is unchanged: ${math}`, { variable: "x", notes: [`x is in ${unitKey(u0)}s.`] });
+    }
+  }
+  if (sents.length === 2) {
+    const [a, b] = sents;
+    // a 10% alcohol solution and a 30% alcohol solution are mixed to make 50 liters of a 22% alcohol solution
+    if ((m = new RegExp(`^${PCT} and ${PCT} are (?:mixed|combined) ${GET} ${N} ${MU} (?:of )?${PCT}$`).exec(a))) {
+      const [, p, sp, spb, q, sq, sqb, T, u, r, sr, srb] = m;
+      if (!subst(sp || spb, sq || sqb) || !subst(sp || spb, sr || srb) || !subst(sq || sqb, sr || srb) || p === q) return null;
+      if (!between(p, q, r)) return impossible(`a ${r}% mixture cannot be made from ${p}% and ${q}%`);
+      let mm, want;
+      if ((mm = new RegExp(`^how (?:many|much) ${MU} of the ${N}% (?:[a-z]+ )?(?:solution )?(?:are|is|were|was|should be|must be|will be) (?:used|needed|required)$`).exec(b))) { if (!same(mm[1], u)) return null; want = mm[2] === p ? "x" : mm[2] === q ? "y" : null; if (!want) return null; }
+      else return null;
+      const math = `x + y = ${T}, ${p}x + ${q}y = ${r}*${T}`;
+      return result("word-mixture", math, `let x = ${unitKey(u)}s of the ${p}% solution, y = ${unitKey(u)}s of the ${q}% solution: ${math} (the question asks for ${want})`, { notes: [`Amounts are in ${unitKey(u)}s.`] });
+    }
+    // 15 liters of a 40% solution are mixed with 25 liters of a 20% solution. what is the concentration of the mixture
+    if ((m = new RegExp(`^${N} ${MU} of ${PCT} (?:is|are) (?:mixed|combined) with ${N} ${MU} of ${PCT}$`).exec(a))
+      && /^what is the (?:concentration|percentage|strength|percent concentration)(?: of [a-z]+)? (?:of|in) the (?:mixture|resulting (?:mixture|solution)|new (?:mixture|solution)|final (?:mixture|solution))$/.test(b)) {
+      const [, V1, u1, p, s1, s1b, V2, u2, q, s2, s2b] = m;
+      if (!same(u1, u2) || !subst(s1 || s1b, s2 || s2b)) return null;
+      const math = `(${V1}*${p} + ${V2}*${q})/(${V1} + ${V2})`;
+      return result("word-mixture", math, `concentration = total pure substance / total amount = (${V1} x ${p}% + ${V2} x ${q}%)/(${V1} + ${V2}), in percent`, { goal: "evaluate", notes: ["The answer is a percentage."] });
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- two-digit numbers
+const DG_NUM = String.raw`(?:a|the) (?:2|two)[- ]digit (?:number|integer)`;
+function digitProblems(sents) {
+  if (!/\bdigit/.test(sents.join(" "))) return null;
+  const nouns = [
+    noun("the tens digit", "t"), noun("its tens digit", "t"), noun("the ten's digit", "t"), noun("the tens' digit", "t"),
+    noun("the units digit", "u"), noun("its units digit", "u"), noun("the ones digit", "u"), noun("its ones digit", "u"), noun("the unit's digit", "u"), noun("the unit digit", "u"),
+  ].sort((a, b) => b.words.length - a.words.length);
+  const eqs = [];
+  let asked = false;
+  for (const s0 of sents) {
+    let s = s0, m;
+    if (/^(?:find|what is|determine) (?:the|this) (?:number|original number)$/.test(s)) { if (asked) return null; asked = true; continue; }
+    const n = new RegExp(` of (?:${DG_NUM}|the number)`);
+    // "the tens digit of a two-digit number is twice the units digit"
+    s = s.replace(new RegExp(`^(the (?:tens|units|ones) digit)${n.source}`), "$1");
+    if ((m = new RegExp(`^(?:the )?sum of (?:the |its )?digits(?: of (?:${DG_NUM}|the number))? is ${N}$|^the digits of ${DG_NUM} add up to ${N}$|^${DG_NUM} has digits (?:that add up to|whose sum is|with a sum of) ${N}$`).exec(s))) { eqs.push(`t + u = ${m[1] || m[2] || m[3]}`); continue; }
+    if ((m = new RegExp(`^(?:if|when) (?:the |its )?digits are reversed,? the (?:new|resulting) number is ${N} (more|greater|less|smaller) than the original(?: number)?$`).exec(s))) { eqs.push(`10u + t = 10t + u ${/more|greater/.test(m[2]) ? "+" : "-"} ${m[1]}`); continue; }
+    if ((m = new RegExp(`^${DG_NUM} is ${N} times the sum of its digits$`).exec(s))) { eqs.push(`10t + u = ${m[1]}(t + u)`); continue; }
+    if (!/^(?:the|its) (?:tens|ten's|tens'|units|unit's|unit|ones) digit /.test(s)) return null;
+    const e = readEquation(s, nouns, ["t", "u"]);
+    if (!e || e.ambiguous || !/(?<![a-z])t(?![a-z])/.test(e.text) || !/(?<![a-z])u(?![a-z])/.test(e.text)) return null;
+    eqs.push(e.text);
+  }
+  // translate() strips a final "find the number" before the words reach here, so no question means the number
+  if (eqs.length !== 2) return null;
+  const math = eqs.join(", ");
+  const sol = linearSolution(math, ["t", "u"]);
+  if (!sol) return null;
+  if (!(isInt(sol.t) && isInt(sol.u) && sol.t >= 1 - 1e-9 && sol.t <= 9 + 1e-9 && sol.u >= -1e-9 && sol.u <= 9 + 1e-9)) return impossible("the digits would not be whole numbers from 0 to 9 (with a tens digit of at least 1)");
+  const full = `${math}, n = 10t + u`;
+  return result("word-digits", full, `let t be the tens digit and u the units digit, so the number is n = 10t + u: ${full} (the question asks for n)`);
+}
+
+// ---------------------------------------------------------------- ratio sharing: named shares, parts
+function ratioMore(sents) {
+  let m, mm;
+  const RT = String.raw`(\d+) ?: ?(\d+)(?: ?: ?(\d+))?`;
+  const COUNTABLE = /^(?:sweets|candies|marbles|apples|oranges|coins|stamps|cards|books|pencils|pens|stickers|beads|balls|toys|cookies|eggs|students|people|children|chocolates|shares|tickets|cars|animals)$/;
+  if ((m = new RegExp(`^(?:divide|split|share) ${N}( dollars| [a-z]+)? (?:between|among|amongst) ([a-z]+(?:, [a-z]+)*,? and [a-z]+) in the ratio ${RT}$`).exec(sents[0]))) {
+    const T = m[1], item = (m[2] || "").trim(), names = m[3].split(/,? and |, /), parts = [m[4], m[5], m[6]].filter(Boolean);
+    if (names.length !== parts.length || new Set(names).size !== names.length || parts.some((q) => !(+q > 0))) return null;
+    if (names.some((w) => /^(?:them|us|the|two|three|2|3|people|friends|brothers|sisters|children|boys|girls)$/.test(w))) return null;
+    const S = parts.reduce((a, q) => a + +q, 0);
+    if (item && item !== "dollars" && !COUNTABLE.test(item)) return null;
+    if (COUNTABLE.test(item) && !parts.every((q) => isInt((+T * +q) / S))) return impossible(`${T} ${item} cannot be shared in whole numbers in the ratio ${parts.join(":")}`);
+    const sum = parts.join(" + ");
+    if (sents.length === 1) {
+      const vars = ["x", "y", "z"].slice(0, parts.length);
+      const math = [`${vars.join(" + ")} = ${T}`, ...vars.slice(1).map((v, k) => `${parts[0]}${v} = ${parts[k + 1]}x`)].join(", ");
+      const nm = (w) => (/^[a-z]$/.test(w) ? w.toUpperCase() : w);
+      return result("word-ratio", math, `${names.map((w, k) => `${vars[k]} = ${nm(w)}'s share`).join(", ")}; shares in the ratio ${parts.join(":")} adding to ${T}: ${math}`);
+    }
+    if (sents.length === 2 && (mm = /^how (?:much|many(?: [a-z]+)?) (?:does|will|would|did) ([a-z]+) (?:get|receive)$/.exec(sents[1]))) {
+      const k = names.indexOf(mm[1]);
+      if (k < 0) return null;
+      return result("word-ratio", `${T}*${parts[k]}/(${sum})`, `${mm[1]} gets ${parts[k]} of every ${sum} parts: ${T} x ${parts[k]}/(${sum})`, { goal: "evaluate" });
+    }
+    return null;
+  }
+  // divide 200 in the ratio 1:3. what is the smaller part
+  if (sents.length === 2 && (m = new RegExp(`^(?:divide|split|share) ${N}(?: dollars)? (?:in|into) the ratio ${RT}$`).exec(sents[0]))
+    && (mm = /^(?:what is|find) the (smaller|larger|smallest|largest|greater|greatest|bigger|biggest) (?:part|share|amount|number)$/.exec(sents[1]))) {
+    const T = m[1], parts = [m[2], m[3], m[4]].filter(Boolean).map(Number);
+    if (parts.some((q) => !(q > 0))) return null;
+    const big = /larg|great|bigg/.test(mm[1]);
+    if ((parts.length === 2) !== /er$/.test(mm[1])) return null; // "smaller" of two, "smallest" of three
+    const k = big ? Math.max(...parts) : Math.min(...parts);
+    if (parts.filter((q) => q === k).length > 1) return null;
+    const sum = parts.join(" + ");
+    return result("word-ratio", `${T}*${k}/(${sum})`, `the ${mm[1]} part is ${k} of every ${sum}: ${T} x ${k}/(${sum})`, { goal: "evaluate" });
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------- entry
 const CATEGORIES = [
   ["word-age", ages], ["word-consecutive", consecutiveInts], ["word-two-numbers", twoNumbers], ["word-number", numberSentence],
-  ["word-mixture", mixtures], ["word-work", work], ["word-distance", distance], ["word-distance", distanceMore],
-  ["word-percent", percents], ["word-percent", percentOf], ["word-interest", interest],
-  ["word-geometry", geometry], ["word-geometry", boxVolume], ["word-probability", probability], ["word-rate", unitRates], ["word-ratio", ratios],
+  ["word-mixture", mixtures], ["word-mixture", mixtureMore], ["word-work", work], ["word-work", workMore],
+  ["word-distance", distance], ["word-distance", distanceMore], ["word-distance", twoMovers], ["word-distance", distanceExtra],
+  ["word-percent", percents], ["word-percent", percentOf], ["word-percent", percentMore], ["word-interest", interest], ["word-interest", interestMore],
+  ["word-digits", digitProblems],
+  ["word-geometry", geometry], ["word-geometry", boxVolume], ["word-probability", probability], ["word-rate", unitRates], ["word-ratio", ratios], ["word-ratio", ratioMore],
   ["word-system", systems], ["word-angles", angles],
 ];
 export function wordPatterns({ wordsToNumbers }) {

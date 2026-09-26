@@ -21,7 +21,7 @@ const run = (cases) => {
 };
 
 // minimum ok counts are floors a little under today's numbers, so a regression shows up
-for (const [name, cases, floor] of [["main", CASES, 180], ["held-out", HELDOUT, 58], ["fresh", HELDOUT_FRESH, 30]]) {
+for (const [name, cases, floor] of [["main", CASES, 260], ["held-out", HELDOUT, 76], ["fresh", HELDOUT_FRESH, 30]]) {
   test(`word problems (${name}): zero WRONG, at least ${floor} answered`, () => {
     const { tally, wrong } = run(cases);
     eq(wrong.length, 0, `WRONG answers:\n  ${wrong.join("\n  ")}`);
@@ -80,6 +80,23 @@ test("word problems: compound interest 'on' P asks for A - P, not the amount (th
   const r = S("Find the compound interest on $1000 at 10% for 2 years.");
   eq(judge(210, r), "ok");
 });
+test("word problems: 'two numbers in the ratio 2:5' puts the larger share on the larger number (was a WRONG answer)", () => {
+  eq(judge(60, S("Two numbers are in the ratio 2:5. Their sum is 84. What is the larger number?")), "ok");
+  eq(judge({ nums: [30, 42] }, S("Two numbers are in the ratio 5:7 and their difference is 12. Find the numbers.")), "ok");
+});
+test("word problems: widening pass, one translation per new family", () => {
+  const w = [
+    ["A and B together can finish a job in 4 days. A alone can finish it in 6 days. How many days will B take alone?", "word-work", "1/6 + 1/t = 1/4"],
+    ["A $200 coat is discounted by 20% and then by a further 10%. What is the final price?", "word-percent", "200*(1 - 20/100)*(1 - 10/100)"],
+    ["What principal will amount to $1320 in 2 years at 5% simple interest?", "word-interest", "P*(1 + 5/100*2) = 1320"],
+    ["Two cars start from towns 300 km apart and drive toward each other at 70 km/h and 80 km/h. After how many hours do they meet?", "word-distance", "(70 + 80)t = 300"],
+    ["A boat's speed in still water is 12 km/h and the current is 3 km/h. How long will it take to travel 45 km upstream?", "word-distance", "45/(12 - 3)"],
+    ["15 liters of a 40% solution are mixed with 25 liters of a 20% solution. What is the concentration of the mixture?", "word-mixture", "(15*40 + 25*20)/(15 + 25)"],
+    ["The sum of the digits of a two-digit number is 9. If the digits are reversed, the new number is 27 more than the original number. Find the number.", "word-digits", "t + u = 9, 10u + t = 10t + u + 27, n = 10t + u"],
+    ["Divide 200 in the ratio 1:3. What is the smaller part?", "word-ratio", "200*1/(1 + 3)"],
+  ];
+  for (const [q, pat, math] of w) { const t = tr(q); ok(t.ok, `${q}: ${t.reason}`); eq(t.pattern, pat); eq(t.math, math); }
+});
 test("word problems: a system names the unknown that the question asks for", () => {
   const t = tr("A farmer has chickens and pigs. There are 20 heads and 56 legs. How many pigs are there?");
   ok(/\(the question asks for y\)/.test(t.interpretation), t.interpretation);
@@ -122,6 +139,27 @@ const refuses = [
   "A number is chosen at random from 1 to 20. What is the probability that it is a multiple of 0?",
   "Adult tickets cost $8 and child tickets cost $5. 100 tickets were sold for a total of $651. How many adult tickets were sold?",
   "Kate is twice as old as Ben. Five years ago Kate was three times as old as Ben. Ten years ago Ben was 1. How old is Kate?",
+  // work: the question's verb and the job must match (the older template answered these before the widening pass)
+  "Pipe A fills a tank in 3 hours and pipe B empties it in 6 hours. How long will it take both pipes together to empty the tank?",
+  "Pipe A fills a tank in 3 hours and pipe B fills it in 6 hours. How long will it take both pipes together to empty the tank?",
+  "A can paint a house in 6 days and B can paint a fence in 3 days. How long will they take together?",
+  "Pipe A fills a tank in 3 hours and pipe B fills half the tank in 6 hours. How long will it take both pipes together?",
+  "Pipe A can fill a tank in 3 hours and pipe B can fill it in 6 hours. If both are open, how long will it take to fill a quarter of the tank?",
+  "A and B together finish a job in 6 days. A alone takes 4 days. How long does B take alone?",
+  // percent, distance, mixture, digits, ratio: facts missing, contradictory or impossible
+  "A price is increased by 10% and then decreased by 10%. What is the final price?",
+  "A shopkeeper buys a chair for $120 and marks it up by 25%. He then gives a 10% discount. What is the selling price?",
+  "Two cars start from towns 300 km apart and drive in the same direction at 70 km/h and 80 km/h. When do they meet?",
+  "Two cars start from the same place at 60 km/h and 40 km/h. After how many hours will they be 100 km apart?",
+  "Two cars leave the same town in opposite directions, one at 60 km/h and the other 2 hours later at 80 km/h. After how many hours will they be 300 km apart?",
+  "A boat's speed in still water is 3 km/h and the current is 12 km/h. How long will it take to travel 45 km upstream?",
+  "A train leaves a station at 90 km/h. Three hours later a train leaves the same station on the same track at 60 km/h. How many hours after the second train leaves will it catch the first?",
+  "How many liters of water must be added to 30 liters of a 20% sugar solution to make it a 25% solution?",
+  "15 liters of a 40% acid solution are mixed with 25 liters of a 20% salt solution. What is the concentration of the mixture?",
+  "The sum of the digits of a two-digit number is 10. If the digits are reversed, the new number is 27 more than the original number. Find the number.",
+  "The tens digit of a two-digit number is twice the units digit. The sum of the digits is 12. Find the units digit.",
+  "Share 85 sweets between Tom and Ann in the ratio 3:4. How many does Ann get?",
+  "The first number and the second number are in the ratio 2:5. Their difference is 21. Find the first number.",
 ];
 for (const q of refuses) test(`word refuses: ${q.slice(0, 70)}`, () => {
   const r = S(q);
