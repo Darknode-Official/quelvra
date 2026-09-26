@@ -2,7 +2,11 @@
 //
 // Pure parts (importable in Node, no DOM): compile, compileEnv, niceTicks, sampleFunction,
 // implicitCurve, inequalityGrid, sampleParametric, samplePolar, classifyPlot.
-// DOM part: createGraph(container) builds the interactive plot.
+// DOM part: createGraph(container, opts) builds the interactive plot.
+//   opts.onStatus(text)  called after set()
+//   opts.trace           tap / hover snaps to a curve; Shift+arrows (or [ and ]) move along it, T switches curve
+//   opts.onView(view)    called (debounced) after the view changes
+// The returned handle also offers setTrace(i), setView(v), info(), toPNG(), toSVG().
 //
 // Evaluation uses JavaScript doubles. That is correct here: plotting is approximation by
 // nature and never feeds back into exact results. No eval / new Function: trees are walked
@@ -626,10 +630,13 @@ export function createGraph(container, opts = {}) {
   wrap.appendChild(canvas);
   const legend = h("ul", "qg-legend", { "aria-label": "Legend" });
   const readout = h("div", "qg-readout", { "aria-live": "off" });
-  readout.textContent = "Drag to pan, scroll or pinch to zoom. Keys: arrows pan, + and - zoom, 0 resets.";
+  readout.textContent = opts.trace
+    ? "Drag to pan, scroll or pinch to zoom, tap or hover to trace. Keys: arrows pan, + and - zoom, 0 resets, Shift+arrows trace, T switches curve."
+    : "Drag to pan, scroll or pinch to zoom. Keys: arrows pan, + and - zoom, 0 resets.";
+  const live = h("div", "sr-only", { "aria-live": "polite" });
   const sliders = h("div", "qg-sliders");
   sliders.hidden = true;
-  root.append(toolbar, wrap, legend, readout, sliders);
+  root.append(toolbar, wrap, legend, readout, live, sliders);
   container.appendChild(root);
 
   const ctx = canvas.getContext("2d");
@@ -641,6 +648,7 @@ export function createGraph(container, opts = {}) {
   let params = [];      // names
   const pv = [];        // current parameter values (shared by every evaluator)
   let hover = null;
+  let traceIdx = 0;     // which y = f(x) item the trace follows (index among function items)
 
   function colors() {
     const cs = win.getComputedStyle(container);
@@ -819,8 +827,13 @@ export function createGraph(container, opts = {}) {
   let ariaTimer = 0;
   function updateAria() {
     win.clearTimeout(ariaTimer);
-    ariaTimer = win.setTimeout(() => canvas.setAttribute("aria-label", summary()), 150);
+    ariaTimer = win.setTimeout(() => {
+      canvas.setAttribute("aria-label", summary());
+      if (opts.onView) { try { opts.onView({ ...view }); } catch (_) { /* observer errors never break the graph */ } }
+    }, 150);
   }
+  const fnItems = () => items.filter((i) => i.kind === "function");
+  const tracedFn = () => { const f = fnItems(); return f.length ? f[Math.min(traceIdx, f.length - 1)] : null; };
 
   // ------------------------------------------------ render
   function render() {
@@ -948,7 +961,9 @@ export function createGraph(container, opts = {}) {
       if (px < -10 || px > w + 10 || py < -10 || py > hh + 10) continue;
       ctx.beginPath(); ctx.arc(px, py, 4.5, 0, Math.PI * 2);
       ctx.fillStyle = c["--bg"]; ctx.fill();
-      ctx.lineWidth = 2; ctx.strokeStyle = m.kind === "extremum" || m.kind === "max" || m.kind === "min" ? c["--plot-2"] : c["--txt"]; ctx.stroke();
+      ctx.lineWidth = 2; ctx.strokeStyle = m.kind === "extremum" || m.kind === "max" || m.kind === "min" ? c["--plot-2"] : c["--txt"];
+      if (m.approx) ctx.setLineDash([2, 2]);
+      ctx.stroke(); ctx.setLineDash([]);
       if (m.label) {
         const tw = ctx.measureText(m.label).width;
         let tx0 = px + 7, ty0 = py - 6;
@@ -966,11 +981,12 @@ export function createGraph(container, opts = {}) {
       ctx.moveTo(hover.px + 0.5, 0); ctx.lineTo(hover.px + 0.5, hh);
       ctx.moveTo(0, hover.py + 0.5); ctx.lineTo(w, hover.py + 0.5);
       ctx.stroke(); ctx.setLineDash([]);
-      if (firstFn) {
-        const fy = firstFn.f(hover.x);
+      const tf = tracedFn();
+      if (tf) {
+        const fy = tf.f(hover.x);
         if (Number.isFinite(fy)) {
-          ctx.beginPath(); ctx.arc(PX(hover.x), PY(fy), 3.5, 0, Math.PI * 2);
-          ctx.fillStyle = col(firstFn); ctx.fill();
+          ctx.beginPath(); ctx.arc(PX(hover.x), PY(fy), opts.trace ? 5 : 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = col(tf); ctx.fill();
         }
       }
     }
@@ -985,18 +1001,36 @@ export function createGraph(container, opts = {}) {
   const pointers = new Map();
   let lastPinch = null;
 
-  function setHover(px, py) {
+  function setHover(px, py, announce = false) {
     const d = toData(px, py);
     hover = { px, py, x: d.x, y: d.y };
-    const firstFn = items.find((i) => i.kind === "function");
-    let s = `x = ${fmtNum(d.x)}, y = ${fmtNum(d.y)}`;
-    if (firstFn) { const fy = firstFn.f(d.x); s += `; ${firstFn.label.split(" = ")[0]} at x: ${Number.isFinite(fy) ? fmtNum(fy) : "undefined"}`; }
+    const tf = tracedFn();
+    let s;
+    if (opts.trace && tf) {
+      const fy = tf.f(d.x);
+      if (Number.isFinite(fy)) hover.py = cssH - ((fy - view.ymin) / (view.ymax - view.ymin)) * cssH;
+      s = `Trace ${tf.label}: x = ${fmtNum(d.x)}, y = ${Number.isFinite(fy) ? fmtNum(fy) : "undefined"}`;
+    } else {
+      s = `x = ${fmtNum(d.x)}, y = ${fmtNum(d.y)}`;
+      if (tf) { const fy = tf.f(d.x); s += `; ${tf.label.split(" = ")[0]} at x: ${Number.isFinite(fy) ? fmtNum(fy) : "undefined"}`; }
+    }
     readout.textContent = s;
+    if (announce) live.textContent = s;
     schedule();
   }
+  // move the trace cursor by a fraction of the view width
+  function traceStep(dir) {
+    const x0 = hover ? hover.x : (view.xmin + view.xmax) / 2;
+    let x = x0 + dir * (view.xmax - view.xmin) / 100;
+    if (x < view.xmin || x > view.xmax) { const w = view.xmax - view.xmin; view = { ...view, xmin: x - w / 2, xmax: x + w / 2 }; }
+    x = Math.max(view.xmin, Math.min(view.xmax, x));
+    setHover(((x - view.xmin) / (view.xmax - view.xmin)) * cssW, cssH / 2, true);
+  }
+  let downAt = null;
   const onDown = (e) => {
     canvas.setPointerCapture?.(e.pointerId);
     pointers.set(e.pointerId, localPt(e));
+    downAt = pointers.size === 1 ? { p: localPt(e), moved: 0 } : null;
     lastPinch = null;
   };
   const onMove = (e) => {
@@ -1004,6 +1038,8 @@ export function createGraph(container, opts = {}) {
     if (!pointers.has(e.pointerId)) { if (e.pointerType === "mouse") setHover(p[0], p[1]); return; }
     const prev = pointers.get(e.pointerId);
     pointers.set(e.pointerId, p);
+    if (downAt) downAt.moved = Math.max(downAt.moved, Math.hypot(p[0] - downAt.p[0], p[1] - downAt.p[1]));
+    if (pointers.size === 1 && downAt && downAt.moved < 5) return; // a tap, not a drag (yet)
     if (pointers.size === 1) {
       const dx = ((prev[0] - p[0]) / cssW) * (view.xmax - view.xmin);
       const dy = ((p[1] - prev[1]) / cssH) * (view.ymax - view.ymin);
@@ -1024,7 +1060,10 @@ export function createGraph(container, opts = {}) {
     }
   };
   const onUp = (e) => {
+    const tap = downAt && downAt.moved < 5 && pointers.size === 1 && e.type === "pointerup";
     pointers.delete(e.pointerId);
+    if (tap) { const p = localPt(e); setHover(p[0], p[1]); }
+    downAt = null;
     lastPinch = null;
     if (!pointers.size) updateAria();
   };
@@ -1038,6 +1077,16 @@ export function createGraph(container, opts = {}) {
   };
   const onKey = (e) => {
     const wx = (view.xmax - view.xmin) * 0.1, wy = (view.ymax - view.ymin) * 0.1;
+    if (opts.trace && tracedFn()) {
+      const dir = e.key === "]" || (e.shiftKey && e.key === "ArrowRight") ? 1 : e.key === "[" || (e.shiftKey && e.key === "ArrowLeft") ? -1 : 0;
+      if (dir) { e.preventDefault(); traceStep(e.altKey ? dir * 10 : dir); return; }
+      if (e.key === "t" || e.key === "T") {
+        e.preventDefault();
+        traceIdx = (traceIdx + 1) % fnItems().length;
+        if (hover) setHover(hover.px, hover.py, true); else traceStep(0);
+        return;
+      }
+    }
     let handled = true;
     switch (e.key) {
       case "ArrowLeft": pan(-wx, 0); break;
@@ -1095,7 +1144,111 @@ export function createGraph(container, opts = {}) {
     root.remove();
   }
 
-  return { set, resetView, zoom: (f) => zoom(f), destroy, summary, redraw: () => { buildLegend(); schedule(); }, get view() { return { ...view }; } };
+  // ------------------------------------------------ export
+  function toPNG() {
+    render();
+    const out = doc.createElement("canvas");
+    out.width = canvas.width; out.height = canvas.height;
+    const o = out.getContext("2d");
+    const bg = win.getComputedStyle(container).getPropertyValue("--card").trim() || colors()["--bg"];
+    o.fillStyle = bg; o.fillRect(0, 0, out.width, out.height);
+    o.drawImage(canvas, 0, 0);
+    return out.toDataURL("image/png");
+  }
+  // The same picture as vector SVG (curves sampled for the current view).
+  function toSVG() {
+    const c = colors();
+    const bg = win.getComputedStyle(container).getPropertyValue("--card").trim() || c["--bg"];
+    const w = cssW || 600, hh = cssH || 400;
+    const { xmin, xmax, ymin, ymax } = view;
+    const PX = (x) => +((x - xmin) * w / (xmax - xmin)).toFixed(2), PY = (y) => +(hh - (y - ymin) * hh / (ymax - ymin)).toFixed(2);
+    const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const col = (it) => c["--plot-" + ((it.colorIdx % 4) + 1)];
+    const parts = [`<svg xmlns="${SVGNS}" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}" font-family="system-ui, sans-serif" font-size="11">`,
+      `<rect width="${w}" height="${hh}" fill="${esc(bg)}"/>`];
+    const tx = niceTicks(xmin, xmax, Math.max(2, Math.round(w / 90))), ty = niceTicks(ymin, ymax, Math.max(2, Math.round(hh / 60)));
+    let g = "";
+    for (const t of tx.ticks) g += `M${PX(t)} 0V${hh}`;
+    for (const t of ty.ticks) g += `M0 ${PY(t)}H${w}`;
+    parts.push(`<path d="${g}" stroke="${esc(c["--grid"])}" stroke-width="1" fill="none"/>`);
+    let a = "";
+    if (PY(0) >= 0 && PY(0) <= hh) a += `M0 ${PY(0)}H${w}`;
+    if (PX(0) >= 0 && PX(0) <= w) a += `M${PX(0)} 0V${hh}`;
+    if (a) parts.push(`<path d="${a}" stroke="${esc(c["--axis"])}" stroke-width="1.25" fill="none"/>`);
+    const lx = Math.min(hh - 4, Math.max(14, PY(0) + 14)), ly = Math.min(w - 4, Math.max(40, PX(0) - 5));
+    for (const t of tx.ticks) if (t !== 0 && PX(t) > 12 && PX(t) < w - 12) parts.push(`<text x="${PX(t)}" y="${lx}" text-anchor="middle" fill="${esc(c["--mut"])}">${esc(fmtNum(t, tx.step))}</text>`);
+    for (const t of ty.ticks) if (t !== 0 && PY(t) > 7 && PY(t) < hh - 7) parts.push(`<text x="${ly}" y="${PY(t) + 4}" text-anchor="end" fill="${esc(c["--mut"])}">${esc(fmtNum(t, ty.step))}</text>`);
+    const ex = xmax - xmin, ey = ymax - ymin;
+    const box = [xmin - ex, ymin - ey, xmax + ex, ymax + ey];
+    const segPath = (segs) => {
+      let d = "";
+      for (const sg of segs) {
+        let last = null;
+        for (let i = 1; i < sg.length; i++) {
+          const r = clip(sg[i - 1][0], sg[i - 1][1], sg[i][0], sg[i][1], ...box);
+          if (!r) { last = null; continue; }
+          const a0 = PX(r[0]), b0 = PY(r[1]);
+          if (!last || last[0] !== a0 || last[1] !== b0) d += `M${a0} ${b0}`;
+          d += `L${PX(r[2])} ${PY(r[3])}`;
+          last = [PX(r[2]), PY(r[3])];
+        }
+      }
+      return d;
+    };
+    const linePath = (lines) => lines.map((l) => `M${PX(l[0])} ${PY(l[1])}L${PX(l[2])} ${PY(l[3])}`).join("");
+    const gx = Math.max(20, Math.min(180, Math.round(w / 5))), gy = Math.max(20, Math.min(180, Math.round(hh / 5)));
+    for (const it of items) {
+      const stroke = `stroke="${esc(col(it))}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"`;
+      if (it.kind === "function") parts.push(`<path d="${segPath(sampleFunction(it.f, xmin, xmax, { ymin, ymax, poles, initial: 400 }))}" ${stroke}/>`);
+      else if (it.kind === "curve") {
+        const fx = it.polar ? (t) => it.fr(t) * Math.cos(t) : it.fx, fy = it.polar ? (t) => it.fr(t) * Math.sin(t) : it.fy;
+        parts.push(`<path d="${segPath(sampleParametric(fx, fy, it.t0, it.t1, { n: 2000, maxJump: Math.hypot(ex, ey) * 0.5 }))}" ${stroke}/>`);
+      } else if (it.kind === "implicit") parts.push(`<path d="${linePath(implicitCurve(it.F, xmin, xmax, ymin, ymax, { nx: gx, ny: gy }))}" ${stroke}/>`);
+      else if (it.kind === "inequality") {
+        const nx = Math.max(10, Math.round(w / 6)), ny = Math.max(10, Math.round(hh / 6));
+        const grids = it.conds.map((cd) => inequalityGrid(cd.G, cd.op, xmin, xmax, ymin, ymax, nx, ny));
+        let d = "";
+        const cw = w / nx, ch = hh / ny;
+        for (let j = 0; j < ny; j++) {
+          let run = -1;
+          for (let i = 0; i <= nx; i++) {
+            const k = j * nx + i;
+            const on = i < nx && (it.join === "or" ? grids.some((gr) => gr[k]) : grids.every((gr) => gr[k]));
+            if (on && run < 0) run = i;
+            else if (!on && run >= 0) { d += `M${(run * cw).toFixed(1)} ${(hh - (j + 1) * ch).toFixed(1)}h${((i - run) * cw).toFixed(1)}v${ch.toFixed(1)}h${(-(i - run) * cw).toFixed(1)}z`; run = -1; }
+          }
+        }
+        parts.push(`<path d="${d}" fill="${esc(col(it))}" fill-opacity="0.18"/>`);
+        for (const cd of it.conds) parts.push(`<path d="${linePath(implicitCurve(cd.G, xmin, xmax, ymin, ymax, { nx: gx, ny: gy }))}" ${stroke}${cd.op === "<" || cd.op === ">" || cd.op === "!=" ? ' stroke-dasharray="6 5"' : ""}/>`);
+      } else if (it.kind === "points") for (const q of it.points) parts.push(`<circle cx="${PX(q[0])}" cy="${PY(q[1])}" r="4" fill="${esc(col(it))}"/>`);
+    }
+    const firstFn = fnItems()[0];
+    for (const m of marks.slice(0, 40)) {
+      const y = Number.isFinite(m.y) ? m.y : firstFn ? firstFn.f(m.x) : 0;
+      if (!Number.isFinite(y)) continue;
+      const px = PX(m.x), py = PY(y);
+      if (px < 0 || px > w || py < 0 || py > hh) continue;
+      const stroke = m.kind === "extremum" || m.kind === "max" || m.kind === "min" ? c["--plot-2"] : c["--txt"];
+      parts.push(`<circle cx="${px}" cy="${py}" r="4.5" fill="${esc(bg)}" stroke="${esc(stroke)}" stroke-width="2"${m.approx ? ' stroke-dasharray="2 2"' : ""}/>`);
+      if (m.label) parts.push(`<text x="${px + 7}" y="${py - 6}" font-size="12" fill="${esc(c["--txt"])}">${esc(m.label)}</text>`);
+    }
+    parts.push("</svg>");
+    return parts.join("\n");
+  }
+  function setView(v) {
+    if (!v || !(v.xmax > v.xmin) || !(v.ymax > v.ymin)) return;
+    view = { xmin: +v.xmin, xmax: +v.xmax, ymin: +v.ymin, ymax: +v.ymax };
+    updateAria();
+    schedule();
+  }
+
+  return {
+    set, resetView, zoom: (f) => zoom(f), destroy, summary, redraw: () => { buildLegend(); schedule(); }, get view() { return { ...view }; },
+    setTrace: (i) => { traceIdx = Math.max(0, i | 0); if (hover) setHover(hover.px, hover.py); schedule(); },
+    setView, toPNG, toSVG,
+    info: () => items.map((it) => ({ kind: it.kind, label: it.label, colorIdx: it.colorIdx })),
+    canvas,
+  };
 }
 
 function onlyInsideTrig(u, v) {

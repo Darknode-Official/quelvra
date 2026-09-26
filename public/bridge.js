@@ -4,6 +4,9 @@
 //   checkWork(lines, options, { onProgress, timeoutMs }) -> Job
 //   numeric(input, options, ...)                         -> Job
 //   preview(input)                                       -> Job (runs on a separate worker lane)
+//   tool(input, options), toolBatch([{input, options}]), provePrime(n)
+//                                                         -> Job on the Tools lane, so a Tools job never
+//                                                            cancels (or waits behind) the Solve tab
 //
 // Every job resolves with a deserialised result (trees rebuilt as record.node) or rejects with
 // { code, message, pos, hint }. cancel() terminates the worker and a fresh one is spawned for
@@ -88,10 +91,15 @@ class Lane {
 
 const solveLane = new Lane("solve", 60000);
 const previewLane = new Lane("preview", 4000);
+const toolsLane = new Lane("tools", 60000);
 
 export const solve = (input, options, extra) => solveLane.run("solve", input, options, extra);
 export const checkWork = (lines, options, extra) => solveLane.run("check-work", lines, options, extra);
 export const numeric = (input, options, extra) => solveLane.run("numeric", input, options, extra);
 export const preview = (input, extra) => previewLane.run("preview", input, {}, extra);
+export const tool = (input, options, extra) => toolsLane.run("solve", input, options, extra);
+export const toolBatch = (items, options, extra) => toolsLane.run("batch", items, options, extra);
+export const provePrime = (n, extra) => toolsLane.run("prove-prime", n, {}, extra);
+export const cancelTools = () => { const id = [...toolsLane.pending.keys()][0]; if (id) toolsLane.abort(id, { code: "CANCELLED", message: "Cancelled", pos: null, hint: "" }); };
 export const cancelAll = () => { solveLane.abort([...solveLane.pending.keys()][0], { code: "CANCELLED", message: "Cancelled", pos: null, hint: "" }); };
 export const isBusy = () => solveLane.pending.size > 0;

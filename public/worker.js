@@ -1,6 +1,10 @@
 // Quelvra compute worker (module worker).
 //
-// in : { id, type: "solve" | "preview" | "check-work" | "numeric", input, options: { mode, domain, digits } }
+// in : { id, type: "solve" | "preview" | "check-work" | "numeric" | "batch" | "prove-prime", input, options: { mode, domain, digits } }
+//      batch: input = [{ input, options }]; each item is solved on its own and reported as
+//             { ok: true, result } or { ok: false, error } (the Tools tab asks many small questions at once)
+//      prove-prime: input = an integer expression; returns the primality proof and an independent
+//             re-check of its certificate (engine/primeproof.js), or a factor when composite
 // out: { id, type: "progress", stage }
 //      { id, type: "result", result }            trees serialised by bridge-shared.serializeResult
 //      { id, type: "error", error: { code, message, pos, hint } }
@@ -73,12 +77,50 @@ async function handle(msg) {
       progress("solving");
       return await engine.solve(String(input ?? ""), { ...options, mode: "numeric", onProgress: progress });
     }
+    case "batch": {
+      progress("loading engine");
+      const engine = await loadEngine();
+      const items = Array.isArray(input) ? input.slice(0, 400) : [];
+      const out = [];
+      for (let i = 0; i < items.length; i++) {
+        progress(`solving ${i + 1} of ${items.length}`);
+        const it = items[i] || {};
+        try { out.push({ ok: true, result: await engine.solve(String(it.input ?? ""), { ...options, ...(it.options || {}) }) }); }
+        catch (e) { out.push({ ok: false, error: errorPayload(e) }); }
+      }
+      return out;
+    }
+    case "prove-prime": return provePrime(String(input ?? ""));
     default: {
       const e = new Error("Unknown request type " + type);
       e.code = "PROTOCOL";
       throw e;
     }
   }
+}
+
+// Primality with a certificate. The certificate comes from engine/primeproof.js and is re-checked
+// by its independent checker; a composite answer carries a factor that is checked by division.
+async function provePrime(src) {
+  const [{ parse }, { simplify }, PP, NT] = await Promise.all([
+    import("./engine/parse.js"), import("./engine/simplify.js"), import("./engine/primeproof.js"), import("./engine/numtheory.js"),
+  ]);
+  const t = simplify(parse(src));
+  if (t.k !== "num" || t.v.d !== 1n) { const e = new Error("Enter a whole number"); e.code = "UNSUPPORTED"; throw e; }
+  const n = t.v.n;
+  if (n > 10n ** 400n) { const e = new Error("The number has more than 400 digits"); e.code = "BUDGET"; throw e; }
+  const proof = PP.proveprime(n);
+  const out = { n: n.toString(), status: proof.status, method: proof.method, certificate: proof.certificate, checked: null, factor: null };
+  if (proof.status === "prime") out.checked = PP.checkCertificate(proof.certificate);
+  else if (proof.status === "composite" && n > 1n) {
+    const q = NT.primality(n);
+    let f = q.factor ? BigInt(q.factor) : null;
+    if (!f) { const r = NT.factor(n, { budget: 400000 }); if (r.factors && r.factors.length && !(r.factors.length === 1 && r.factors[0][1] === 1n)) f = r.factors[0][0]; }
+    if (f && f > 1n && f < n && n % f === 0n) { out.factor = f.toString(); out.checked = true; }
+    else out.checked = null; // composite by a Fermat / Miller-Rabin witness; no factor found within budget
+    out.witness = q.witness ? String(q.witness) : null;
+  }
+  return out;
 }
 
 self.onmessage = async (ev) => {

@@ -283,3 +283,37 @@ test("mathml: changedIds marks a new node assembled from reused parts", () => {
   ok(!ids.has(after.id), "the equation itself is not wholly new");
   ok(!ids.has(X.sym("x").id));
 });
+
+test("static: Tools tab, panel and icons are wired", () => {
+  const html = readFileSync(join(ROOT, "index.html"), "utf8");
+  for (const id of ["tab-tools", "panel-tools", "tool-nav", "tool-host"]) ok(html.includes(`id="${id}"`), "index.html is missing #" + id);
+  ok(/<button[^>]*id="tab-tools"[^>]*aria-controls="panel-tools"/.test(html), "tools tab controls its panel");
+  ok(/<section id="panel-tools" role="tabpanel" aria-labelledby="tab-tools" hidden>/.test(html), "tools panel starts hidden");
+  const tools = readFileSync(join(ROOT, "tools.js"), "utf8");
+  const used = [...tools.matchAll(/icon\("([a-z-]+)"\)|: "([a-z-]+)"(?=[,}])/g)].map((m) => m[1] || m[2]);
+  const icons = new Set([...html.matchAll(/<symbol id="i-([a-z-]+)"/g)].map((m) => m[1]));
+  for (const name of ["swap", "tools", "t-graph", "t-matrix", "t-stats", "t-hash", "t-system", "keys", "book", "check", "alert", "dash", "x", "plus", "down", "copy", "enter", "chev"]) ok(icons.has(name), "missing SVG symbol i-" + name);
+  for (const m of tools.matchAll(/icon\("([a-z-]+)"\)/g)) ok(icons.has(m[1]), "tools.js uses an undefined icon " + m[1]);
+  void used;
+  const app = readFileSync(join(ROOT, "app.js"), "utf8");
+  ok(app.includes('import("./tools.js")'), "tools load lazily from app.js");
+  ok(/const TABS = \["solve", "check", "tools"\]/.test(app));
+});
+
+test("static: tools modules import only local files and the engine stays untouched by them", () => {
+  for (const f of ["tools.js", "tools-core.js"]) {
+    const src = readFileSync(join(ROOT, f), "utf8");
+    for (const m of src.matchAll(/^import .* from "([^"]+)";$/gm)) ok(m[1].startsWith("./"), `${f} imports ${m[1]}`);
+    ok(!/fetch\(|XMLHttpRequest|WebSocket|localStorage\.setItem/.test(src), f + " must not use the network or raw storage");
+  }
+  const core = readFileSync(join(ROOT, "tools-core.js"), "utf8");
+  ok(!/document\.|window\./.test(core), "tools-core.js stays DOM-free so Node can test it");
+});
+
+test("worker: batch and prove-prime requests are exposed through the tools lane", () => {
+  const w = readFileSync(join(ROOT, "worker.js"), "utf8");
+  ok(/"batch"/.test(w) && /"prove-prime"/.test(w), "worker handles batch and prove-prime");
+  const b = readFileSync(join(ROOT, "bridge.js"), "utf8");
+  ok(/new Lane\("tools"/.test(b), "tools run on their own lane so they never cancel Solve");
+  for (const fn of ["tool", "toolBatch", "provePrime", "cancelTools"]) ok(new RegExp(`export const ${fn} =`).test(b), "bridge exports " + fn);
+});

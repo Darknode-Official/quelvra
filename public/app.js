@@ -733,12 +733,30 @@ async function runCheck() {
 }
 
 // ---------------- tabs ----------------
-function switchTab(which) {
-  for (const [t, p] of [["solve", "panel-solve"], ["check", "panel-check"]]) {
+const TABS = ["solve", "check", "tools"];
+function switchTab(which, tool) {
+  for (const t of TABS) {
     const tab = $("#tab-" + t), on = t === which;
     tab.setAttribute("aria-selected", String(on));
     tab.tabIndex = on ? 0 : -1;
-    $("#" + p).hidden = !on;
+    $("#panel-" + t).hidden = !on;
+  }
+  if (which === "tools") openTools(tool);
+}
+
+// ---------------- tools (loaded on first use) ----------------
+let toolsMod = null;
+async function openTools(tool) {
+  try {
+    if (!toolsMod) {
+      toolsMod = await import("./tools.js");
+      toolsMod.initTools({ h, icon, mathEl, toast, copyText, loadProblem, store });
+    }
+    const saved = tool || toolsMod.currentTool() || (await store.getPref("tool", "graph"));
+    toolsMod.showTool(saved, false, true);
+  } catch (err) {
+    toast("The tools could not be loaded");
+    console.error(err);
   }
 }
 
@@ -765,6 +783,7 @@ function updateThemeButton() {
   btn.setAttribute("aria-label", cur === "dark" ? "Switch to light theme" : "Switch to dark theme");
   btn.replaceChildren(icon(cur === "dark" ? "sun" : "moon"));
   if (state.graph && state.graph.redraw) state.graph.redraw();
+  if (toolsMod) toolsMod.redrawTools();
 }
 function toggleTheme() {
   const next = effectiveTheme() === "dark" ? "light" : "dark";
@@ -845,16 +864,16 @@ function wire() {
   $("#btn-theme").addEventListener("click", toggleTheme);
   if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", updateThemeButton);
 
-  const tabs = [$("#tab-solve"), $("#tab-check")];
+  const tabs = TABS.map((t) => $("#tab-" + t));
   tabs.forEach((tab, i) => {
-    tab.addEventListener("click", () => switchTab(i ? "check" : "solve"));
+    tab.addEventListener("click", () => switchTab(TABS[i]));
     tab.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-        e.preventDefault();
-        const j = (i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
-        switchTab(j ? "check" : "solve");
-        tabs[j].focus();
-      }
+      const j = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+      if (j === undefined) return;
+      e.preventDefault();
+      const k = (j + tabs.length) % tabs.length;
+      switchTab(TABS[k]);
+      tabs[k].focus();
     });
   });
 
@@ -881,7 +900,9 @@ async function init() {
   refreshHistory();
   const params = new URLSearchParams(location.search);
   const initial = params.get("q");
+  const tool = params.get("tool");
   if (initial) loadProblem(initial.slice(0, 5000), true);
+  else if (tool !== null) switchTab("tools", tool);
   else q().focus({ preventScroll: true });
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
