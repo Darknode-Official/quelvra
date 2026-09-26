@@ -410,7 +410,8 @@ function answerCard(r) {
   for (const a of answers) {
     if (!a.tree && a.kind !== "none" && (a.text || a.label) && !(a.kind === "approx" && a.approx)) {
       const row = h("div", { class: "ans ans-textual" });
-      if (a.label && a.text) row.append(h("div", { class: "ans-label" }, a.label));
+      // skip the label when the text already starts with it ("Yes" + "Yes: p or not p is a tautology.")
+      if (a.label && a.text && !a.text.toLowerCase().startsWith(a.label.toLowerCase())) row.append(h("div", { class: "ans-label" }, a.label));
       row.append(h("div", { class: "ans-text" }, a.text || a.label));
       list.append(row);
       continue;
