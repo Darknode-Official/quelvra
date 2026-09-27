@@ -322,4 +322,16 @@ export const CASES = [
   ["trap", "How many liters of water must be added to 10 liters of a 20% salt solution to make a 30% solution?", { refuse: true }],
   ["trap", "A tank has two pipes. Pipe A fills it in 4 hours. How long will both pipes take together?", { refuse: true }],
   ["trap", "The digits of a two-digit number add up to 20. Find the number.", { refuse: true }],
+  // ---------------------------------------------------------------- arithmetic stories (no unknown)
+  ["arith", "John has 3 apples and buys 5 more. How many apples does he have?", 8],
+  ["arith", "Ann has 12 apples, buys 5 more and gives 3 away. How many does she have?", 14],
+  ["arith", "Tom had 20 marbles. He lost 7 and then found 4. How many marbles does he have now?", 17],
+  ["arith", "A tank has 50 liters. 10 liters are used and 5 more are added. How much is left?", 45],
+  ["arith", "There are 4 boxes with 6 apples each. How many apples are there?", 24],
+  ["arith", "A boy has 5 apples and his sister has 3 apples. How many do they have together?", 8],
+  ["arith", "A shelf has 15 books. 6 are removed and 9 are added. How many books are on the shelf?", 18],
+  ["distance", "A car travels at 60 mph for 3 hours. How far does it go?", 180],
+  ["distance", "A cyclist rides 30 miles in 2 hours. How fast is she going?", 15],
+  ["distance", "A runner covers 100 meters at 5 m/s. How long does it take?", 20],
+  ["trap", "A car travels 120 miles in 2 hours. What is its speed in km/h?", { refuse: true }],
 ];

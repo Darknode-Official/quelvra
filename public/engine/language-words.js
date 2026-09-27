@@ -2103,6 +2103,133 @@ function ratioMore(sents) {
   return null;
 }
 
+// ---------------------------------------------------------------- direct arithmetic story problems
+// Plain add/subtract/multiply narratives that carry no unknown ("Ann has 12 apples, buys 5 more
+// and gives 3 away. How many does she have?"). These are NOT algebra, so the older algebraic
+// handlers correctly refuse them; this one runs last and only produces a compute expression when
+// EVERY number in the story is accounted for (an unclaimed number could be a dropped fact -> refuse).
+const STORY_ADD = /\b(?:buys?|bought|gets?|got|gains?|gained|finds?|found|receives?|received|adds?|added|picks up|picked up|is given|was given|are given|were given|earns?|earned|collects?|collected|catches?|caught|wins?|won|grows?|grew(?: by)?|plants?|planted|makes?|made|bakes?|baked|saves?|saved|puts? in|added in)\b/;
+const STORY_SUB = /\b(?:loses?|lost|gives? away|gave away|gives?|gave|eats?|ate|sells?|sold|spends?|spent|uses?|used|drops?|dropped|throws? away|threw away|throws? out|threw out|removes?|removed|breaks?|broke|donates?|donated|shares?|shared|hands? out|handed out|takes? out|took out|leaves?|left|pays?|paid)\b/;
+const STORY_START = /\b(?:has|had|have|owns?|owned|starts? with|started with|starts? off with|begins? with|began with|bought|buys?)\b/;
+
+function arithmeticStory(sents, text) {
+  if (sents.length < 1 || sents.length > 8) return null;
+  // Guard: anything that needs algebra, a second party, ratios or percents is not this model.
+  if (/\b(twice|thrice|double|triple|quadruple|times as many|as many as|as old as|as much as|ratio|proportion|consecutive|percent|per cent|average|mean|median|each other|per (?:hour|minute|second|day|week|mile)|mph|km\/h|equation|solve for|unknown)\b/.test(text)) return null;
+  if (/%/.test(text)) return null;
+  // find the question sentence
+  let qi = -1, item = null, mult = false;
+  for (let i = sents.length - 1; i >= 0; i--) {
+    const m = /^(?:so |then |and )?how (many|much)(?: more| many more| fewer| less)? ([a-z]+)?/.exec(sents[i]);
+    if (m && /\b(?:have|has|left|remain|remaining|are there|is there|be left|now|in total|altogether|does|do|did)\b/.test(sents[i])) { qi = i; if (m[2] && !/does|do|did|are|is|will|would|has|have/.test(m[2])) item = sing(m[2]); break; }
+  }
+  if (qi < 0) return null;
+  const body = sents.filter((_, i) => i !== qi).join(". ");
+  if (!body) return null;
+  // Two different possessors ("john has ... mary has ...") => not this single-thread model.
+  if ((body.match(new RegExp(STORY_START.source, "g")) || []).filter((_, __, a) => a).length && /\b\w+ and \w+ (?:has|have|had)\b/.test(body)) return null;
+
+  // two-actor combine: "A has N1, B has N2 ... how many together / in total / in all"
+  if (/\b(together|altogether|in total|in all|combined|between them|do they have|are there in total)\b/.test(sents[qi]) && !STORY_ADD.test(body) && !STORY_SUB.test(body) && !/\b(more|fewer|less)\b/.test(body)) {
+    const starts = [...body.matchAll(/\b(?:has|had|have|owns?|owned|there (?:are|were))\s+(\d+(?:\.\d+)?)/g)].map((x) => +x[1]);
+    const allN = (body.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+    if (starts.length >= 2 && starts.length === allN.length) return result("word-arith", starts.join(" + "), `add what each has: ${starts.join(" + ")}`, { goal: "evaluate" });
+    return null;
+  }
+
+  // multiplicative: "N boxes of M each" / "N groups of M" / "N rows with M items each"
+  let mm;
+  if ((mm = /\b(\d+)\s+[a-z]+\s+(?:of|with|containing|holding|each (?:with|of|holding|containing))\s+(\d+)\s+[a-z]+(?:\s+each|\s+in each| in it| apiece)?\b/.exec(body)) ||
+      (mm = /\b(\d+)\s+[a-z]+\s+each\s+(?:has|have|holds?|contains?|with)\s+(\d+)\b/.exec(body))) {
+    const allNums = (body.match(/\d+(?:\.\d+)?/g) || []);
+    if (allNums.length !== 2) return null;
+    const a = +mm[1], b = +mm[2];
+    return result("word-arith", `${a}*${b}`, `${a} groups of ${b}: ${a} x ${b}`, { goal: "evaluate" });
+  }
+
+  // additive/subtractive running total. Collect (sign, number) events; require exactly one start.
+  let base = null, baseIdx = -1;
+  const events = []; // {sign, n}
+  const claimed = []; // char index spans of consumed numbers, to enforce full coverage
+  const numRe = /\d+(?:\.\d+)?/g;
+  // start: first number preceded (in its clause) by a start verb
+  const startRe = new RegExp(String.raw`(?:has|had|have|owns?|owned|starts?(?: off)? with|started(?: off)? with|begins? with|began with|there (?:are|were)|is|are)\s+(\d+(?:\.\d+)?)`, "g");
+  let sm = startRe.exec(body);
+  if (sm) { base = +sm[1]; baseIdx = sm.index + sm[0].lastIndexOf(sm[1]); }
+  if (base === null) return null;
+  // events: a verb followed (within a short window) by a number, or "N more/fewer/less"
+  const evRe = /\b(buys?|bought|gets?|got|gains?|gained|finds?|found|receives?|received|adds?|added|picks up|picked up|is given|was given|earns?|earned|collects?|collected|catches?|caught|wins?|won|plants?|planted|bakes?|baked|loses?|lost|gives? away|gave away|gives?|gave|eats?|ate|sells?|sold|spends?|spent|uses?|used|drops?|dropped|throws? away|threw away|removes?|removed|breaks?|broke|donates?|donated)\s+(\d+(?:\.\d+)?)/g;
+  const takenIdx = new Set([baseIdx]);
+  const push = (sign, n, idx) => { if (takenIdx.has(idx)) return; takenIdx.add(idx); events.push({ sign, n, idx }); };
+  let em;
+  while ((em = evRe.exec(body))) {
+    const sign = STORY_SUB.test(em[1]) && !STORY_ADD.test(em[1]) ? -1 : 1;
+    push(sign, +em[2], em.index + em[0].lastIndexOf(em[2]));
+  }
+  // passive events with the number first: "10 liters are used", "5 apples were eaten", "3 are added"
+  const passRe = /(\d+(?:\.\d+)?)\s+(?:[a-z]+\s+)?(?:are|is|were|was|get|gets|got|have been|has been)\s+(used|added|removed|eaten|drunk|consumed|sold|spent|lost|taken away|taken out|taken|given away|poured out|thrown away|thrown out|donated|put in|placed in|added in)\b/g;
+  while ((em = passRe.exec(body))) {
+    const sign = /added|put in|placed in|added in/.test(em[2]) ? 1 : -1;
+    push(sign, +em[1], em.index + em[0].indexOf(em[1]));
+  }
+  // "N more" / "N fewer|less" not already tied to a verb
+  const moreRe = /(\d+(?:\.\d+)?)\s+(more|fewer|less)\b/g;
+  while ((em = moreRe.exec(body))) {
+    push(em[2] === "more" ? 1 : -1, +em[1], em.index + em[0].indexOf(em[1]));
+  }
+  if (!events.length) return null;
+  // Coverage: every number in the body must be the base or exactly one event. Otherwise refuse.
+  const allNums = [];
+  let nm; numRe.lastIndex = 0;
+  while ((nm = numRe.exec(body))) allNums.push({ v: +nm[0], idx: nm.index });
+  const usedVals = [base, ...events.map((e) => e.n)];
+  if (allNums.length !== usedVals.length) return null; // an unclaimed number: could be a dropped fact
+  // Build the compute expression in reading order.
+  let expr = String(base);
+  for (const e of events.sort((a, b) => a.idx - b.idx)) expr += (e.sign < 0 ? " - " : " + ") + e.n;
+  // sanity: the running total must never go negative for a "how many are left" story
+  let run = base, neg = false;
+  for (const e of events.sort((a, b) => a.idx - b.idx)) { run += e.sign * e.n; if (run < 0) neg = true; }
+  if (neg) return impossible("the running total goes below zero");
+  const what = item ? item + (run === 1 ? "" : "s") : "items";
+  return result("word-arith", expr, `start with ${base}${item ? " " + item + (base === 1 ? "" : "s") : ""}, then ${events.map((e) => (e.sign < 0 ? "-" : "+") + e.n).join(" ")}: ${expr}`, { goal: "evaluate", notes: [`Answer is the number of ${what}.`] });
+}
+
+// ---------------------------------------------------------------- direct distance = rate x time
+// "A car travels at 60 mph for 3 hours. How far does it go?" and its two rearrangements. The
+// algebraic distance handlers want an unknown in the setup; this computes when all but one of
+// distance/rate/time is given and the question asks for the third.
+function distanceDirect(sents, text) {
+  // Not this model if there is a second mover, a current/wind, a comparison, or a conversion.
+  if (/\b(twice|as fast|as far|another|second (?:car|train|cyclist|runner|boat|plane)|opposite|toward|towards|catches? up|catch up|meets?|apart|stream|current|still water|downstream|upstream|wind|headwind|tailwind|flows?|flowing|percent|%)\b/.test(text)) return null;
+  const sp = /\b(?:at (?:a (?:speed|rate|pace) of )?|speed of |rate of |going |traveling at |travelling at |driving at |moving at |riding at )?(\d+(?:\.\d+)?)\s*(mph|km\/h|kmh|kph|m\/s|miles per hour|kilometers per hour|kilometres per hour|meters per second|metres per second)\b/.exec(text);
+  const ti = /\bfor\s+(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|seconds?|secs?)\b/.exec(text) || /\bin\s+(\d+(?:\.\d+)?)\s*(hours?|hrs?|minutes?|mins?|seconds?)\b/.exec(text);
+  // a distance, but not the "N miles" inside a "N miles per hour" speed phrase
+  const di = /\b(\d+(?:\.\d+)?)\s*(miles?|mi|kilometers?|kilometres?|km|meters?|metres?|feet|ft)\b(?!\s*(?:per|\/)\s*(?:hour|minute|second|h|s))/.exec(text);
+  const distU = di ? (/mile|mi/.test(di[2]) ? "mi" : /km|kilom/.test(di[2]) ? "km" : /feet|ft/.test(di[2]) ? "ft" : "m") : null;
+  const spDistU = sp ? (/mph|mile/.test(sp[2]) ? "mi" : /km|kilom/.test(sp[2]) ? "km" : "m") : null;
+  const spTimeU = sp ? (/m\/s|per second/.test(sp[2]) ? "s" : "h") : null;
+  const timeU = ti ? (/^h|hour|hr/.test(ti[2]) ? "h" : /min/.test(ti[2]) ? "min" : "s") : null;
+  const asksFar = /\bhow far\b|\bwhat (?:is the )?distance\b|\bhow much distance\b/.test(text);
+  // "how long does it take" is time; "how long is the car" is a length trap and must not match
+  const asksTime = /\bhow long (?:does|will|did|would|to)\b|\bhow much time\b|\bhow many (?:hours|minutes|seconds)\b/.test(text);
+  const asksSpeed = /\bhow fast\b|\bwhat (?:is (?:the|its) )?speed\b|\baverage speed\b|\bat what speed\b/.test(text);
+  const wantsUnit = /\bin (?:km\/h|kmh|kph|mph|m\/s|kilometers per hour|kilometres per hour|miles per hour|meters per second|metres per second)\b/.test(text);
+  if (asksFar && sp && ti) {
+    if (spTimeU !== timeU) return null; // e.g. speed in mph but time in minutes: no guessing the conversion
+    return result("word-distance", `${sp[1]}*${ti[1]}`, `distance = speed x time = ${sp[1]} x ${ti[1]}`, { goal: "evaluate", notes: [`Distance in ${spDistU === "mi" ? "miles" : spDistU === "km" ? "kilometers" : "meters"}.`] });
+  }
+  if (asksTime && sp && di) {
+    if (spDistU !== distU) return null; // distance and speed must use the same length unit
+    return result("word-distance", `${di[1]}/${sp[1]}`, `time = distance / speed = ${di[1]} / ${sp[1]}`, { goal: "evaluate", notes: [`Time in ${spTimeU === "h" ? "hours" : "seconds"}.`] });
+  }
+  if (asksSpeed && di && ti && timeU === "h") {
+    if (wantsUnit) return null; // a requested output unit may need conversion -> refuse rather than guess
+    return result("word-distance", `${di[1]}/${ti[1]}`, `speed = distance / time = ${di[1]} / ${ti[1]}`, { goal: "evaluate", notes: [`Speed in ${distU === "mi" ? "miles per hour" : distU === "km" ? "km/h" : "units per hour"}.`] });
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------- entry
 const CATEGORIES = [
   ["word-age", ages], ["word-consecutive", consecutiveInts], ["word-two-numbers", twoNumbers], ["word-number", numberSentence],
@@ -2112,6 +2239,9 @@ const CATEGORIES = [
   ["word-digits", digitProblems],
   ["word-geometry", geometry], ["word-geometry", boxVolume], ["word-probability", probability], ["word-rate", unitRates], ["word-ratio", ratios], ["word-ratio", ratioMore],
   ["word-system", systems], ["word-angles", angles],
+  // run last: plain arithmetic stories and direct distance=rate*time, only when the algebraic
+  // handlers above have refused (they need an unknown; these carry none).
+  ["word-distance", distanceDirect], ["word-arith", arithmeticStory],
 ];
 export function wordPatterns({ wordsToNumbers }) {
   return [{
