@@ -304,12 +304,12 @@ function numberSentence(sents) {
 // ---------------------------------------------------------------- two unknown numbers
 function twoNumbers(sents) {
   const text = sents.join(". ");
-  if (!/\b(?:two|2) (?:positive )?numbers\b|\b(?:1|one) number\b.*\b(?:another|the other)\b/.test(text)) return null;
+  if (!/\b(?:two|2) (?:positive )?numbers\b|\b(?:1|one|a) number\b.*\b(?:another|the other)\b/.test(text)) return null;
   if (/\bconsecutive\b|\bthree\b|\b3 numbers\b/.test(text)) return null;
   // roles: larger/smaller, first/second or one/other; mixing them refuses
   const sizeRole = /\b(?:larger|smaller|greater|bigger|lesser)\b/.test(text), ordRole = /\b(?:first|second)\b/.test(text);
   if (sizeRole && ordRole) return null;
-  const X_ = sizeRole ? ["the larger number", "the larger", "the greater number", "the greater", "the bigger number", "the bigger", "(?:one|1) number"] : ordRole ? ["the first number", "the first"] : ["(?:one|1) number", "one of the numbers", "1 of the numbers", "(?:one|1) of them"];
+  const X_ = sizeRole ? ["the larger number", "the larger", "the greater number", "the greater", "the bigger number", "the bigger", "(?:one|1) number"] : ordRole ? ["the first number", "the first"] : ["(?:one|1) number", "a number", "one of the numbers", "1 of the numbers", "(?:one|1) of them"];
   const Y_ = sizeRole ? ["the smaller number", "the smaller", "the lesser number", "the lesser", "the other number", "the other", "another number", "another"] : ordRole ? ["the second number", "the second"] : ["the other number", "the other", "another number", "another", "the other one"];
   const nouns = [];
   for (const p of X_) for (const w of p.includes("(?:one|1)") ? [p.replace("(?:one|1)", "one"), p.replace("(?:one|1)", "1")] : [p]) nouns.push(noun(w, "x"));
@@ -941,11 +941,12 @@ function percents(sents) {
   const st = {};
   const PRICE_V = String.raw`(?:costs|cost|is priced at|sells for|is|was|has a price of|is marked at|is listed at|regularly costs|normally costs|originally costs|was originally priced at|is originally priced at|that costs|priced at|originally priced at|is originally|originally sells for|usually costs|usually sells for)`;
   const clauses = [
+    [C(`(?:a|an|the) ${THING} (?:costs|sells for|is priced at|is now|is|was) ${N} dollars,? after (?:a )?${N}% (?:discount|reduction|markdown|off)`), (m, s) => set1(s, "F", +m[1]) && set1(s, "d", +m[2])],
     [C(`(?:the (?:price|cost) of )?(?:a|an|the|your|his|her) ${THING} ${PRICE_V} ${N} dollars`), (m, s) => set1(s, "P", +m[1])],
     [C(`(?:a|an|the) ${N} dollars ${THING}`), (m, s) => set1(s, "P", +m[1])],
     [C(`(?:(?:it|which) )?(?:is |was )?(?:on sale for|on sale at|discounted by|discounted at|marked down by|reduced by|discounted|marked down|reduced|offered at|sold at) ${N}%(?: off| discount)?`), (m, s) => set1(s, "d", +m[1])],
     [C(`(?:there is |with |at |it gets |it has )?a ${N}% (?:discount|reduction|markdown|off)`), (m, s) => set1(s, "d", +m[1])],
-    [C(`(?:plus |before |before adding )?(?:a )?${N}% (?:sales )?tax`), (m, s) => set1(s, "t", +m[1])],
+    [C(`(?:plus |before |before adding |with |including |and )?(?:a |an )?${N}% (?:sales )?tax`), (m, s) => set1(s, "t", +m[1])],
     [C(`(?:the )?sales tax (?:rate )?is ${N}%`), (m, s) => set1(s, "t", +m[1])],
     [C(`(?:the )?tax (?:rate )?is ${N}%`), (m, s) => set1(s, "t", +m[1])],
     [C(`(?:you|they|we|he|she|i) (?:leave|leaves|add|adds|give|gives|pay|pays|tip|tips) a ${N}% tip`), (m, s) => set1(s, "tip", +m[1])],
@@ -1059,6 +1060,12 @@ function interest(sents) {
     const a = amountText(m[1], m[2], m[4], m[3] || "annually");
     return ev(`${a.math} - ${m[1]}`, `compound interest = A - P, ${a.how}${m[3] ? "" : " (compounded yearly: no period was given)"}`, m[3] ? [] : ["Compounded once a year (no period was given)."]);
   }
+  // "an investment of P dollars grows at R% per year. what is it worth after N years?" -> annual compounding
+  if (sents.length === 2 && (m = new RegExp(`^(?:a |an |the )?(?:investment|deposit|savings?|account|principal|sum|amount|value|balance|fund)?\\s*of ${N} dollars (?:grows|increases|rises|appreciates|gains|goes up|compounds) (?:at|by) ${N}%(?: per year| a year| each year| annually| per annum| yearly)$`).exec(sents[0]))) {
+    const qm = new RegExp(`^(?:what (?:is|will) it (?:be )?worth|how much (?:is|will) it (?:be )?worth|what (?:is|will) its value(?: be)?|what (?:is|will) the (?:final |new )?(?:amount|balance|value)(?: be)?) after ${N} years?$`).exec(sents[1]);
+    if (qm) { const a = amountText(m[1], m[2], qm[1], "annually"); return ev(a.math, `${a.how} (grows R% a year: annual compounding)`, ["Compounded once a year."]); }
+    return null;
+  }
   if (sents.length === 2 && (m = new RegExp(`^${N} dollars (?:is|was) (?:invested|deposited|put) (?:in an account )?at ${N}%${PER} compounded ${FREQ_RE} for ${N} years$`).exec(sents[0]))) {
     const a = amountText(m[1], m[2], m[4], m[3]);
     if (/^(?:what is|find|calculate) the (?:final |new )?(?:amount|balance|value)(?: in the account)?(?: after .*)?$|^how much (?:is in the account|will there be|will it be worth|money will there be)(?: at the end)?$/.test(sents[1])) return ev(a.math, a.how);
@@ -1087,6 +1094,7 @@ function geometry(sents) {
     [C(`${N}${GU} (long|wide|high|tall)`), (m) => setV(m[2] === "long" ? "length" : m[2] === "wide" ? "width" : "height", m[1])],
     [C(`(?:a|an|its) ${PROPS} (?:of |= ?)?${N}${GU}`), (m) => setV(m[1], m[2])],
     [C(`the ${PROPS} of (?:a|the) ${SHAPES} is ${N}${GU}`), (m) => setShape(m[2]) && setV(m[1], m[3])],
+    [C(`(?:a|the) ${SHAPES}'?s ${PROPS} (?:is|=) ${N}${GU}`), (m) => setShape(m[1]) && setV(m[2], m[3])],
     [C(`(?:the|its) ${PROPS} is ${N}${GU}`), (m) => setV(m[1], m[2])],
   ];
   let want = null;
@@ -2103,6 +2111,72 @@ function ratioMore(sents) {
   return null;
 }
 
+// ---------------------------------------------------------------- proportions / unit rates (natural phrasing)
+// "A recipe needs 2 cups of flour for 12 cookies. How much flour for 30 cookies?" and the like. The
+// older unitRates handler keys on the UNIT word ("cups"); real problems ask by the SUBSTANCE ("flour"),
+// or buy with money. Runs after unitRates/ratios, so it only sees what they refused. Honest by design:
+// it answers only when the asked noun and the given noun each match exactly one side of the rate.
+// ---------------------------------------------------------------- inverse proportion (more workers, less time)
+// "If 3 workers build a wall in 8 days, how long for 6 workers?" -> n1*t1 = n2*t2 (work held constant).
+function inverseWork(sents, text) {
+  if (/%|percent|ratio\b|per (?:hour|day|worker|minute|week)|each other|together|twice as/.test(text)) return null;
+  const AGENT = String.raw`(?:workers?|men|women|people|persons?|machines?|pumps?|printers?|painters?|builders?|labou?rers?|carpenters?|tractors?|robots?|cooks?|bakers?|tailors?|mowers?|diggers?)`;
+  const VERB = String.raw`(?:build|builds|paint|paints|dig|digs|make|makes|do|does|complete|completes|finish|finishes|assemble|assembles|produce|produces|mow|mows|harvest|harvests|clean|cleans|construct|constructs|weave|weaves|plough|ploughs|plow|plows|pave|paves|tile|tiles)`;
+  const m = new RegExp(String.raw`(\d+(?:\.\d+)?)\s+(${AGENT})\s+(?:can\s+|could\s+)?${VERB}\s+(?:a |an |the )?[a-z ]*?\bin\s+(\d+(?:\.\d+)?)\s+(days?|hours?|weeks?|minutes?)\b`).exec(text);
+  if (!m) return null;
+  const n1 = +m[1], t1 = +m[3], unit0 = sing(m[4]);
+  const qm = new RegExp(String.raw`how (?:long|many ${unit0}s?)\s+(?:will it take |would it take |does it take |will |would )?(?:for )?(\d+(?:\.\d+)?)\s+(${AGENT})`).exec(text);
+  if (!qm) return null;
+  const n2 = +qm[1];
+  if (!(n1 > 0 && t1 > 0 && n2 > 0)) return null;
+  if (sing(m[2]) !== sing(qm[2])) return null; // must be the same kind of worker
+  return result("word-rate", `${n1}*${t1}/${n2}`, `inverse proportion: ${n1} ${m[2]} take ${t1}, so ${n2} take ${n1} x ${t1} / ${n2}`, { goal: "evaluate", notes: [`Assumes every ${sing(qm[2])} works at the same steady rate.`, `Time in ${unit0}s.`] });
+}
+
+function proportions(sents, text) {
+  if (/%|percent|interest\b|probability|consecutive|how old|older than|younger than|\bage\b/.test(text)) return null;
+  const E = (math, interp, notes = []) => result("word-rate", math, interp, { goal: "evaluate", notes });
+  const same = (a, b) => !!a && !!b && sing(a) === sing(b);
+  const doz = (s) => s.replace(/\b(\d+) dozen\b/g, (x, n) => String(+n * 12)).replace(/\ba dozen\b/g, "12").replace(/\bdozen\b/g, "12").replace(/\bfor a (dollar|pound|euro)\b/g, "for 1 $1").replace(/\bcosts? a (dollar|pound|euro)\b/g, "cost 1 $1");
+  // clause-based so a one-sentence "..., how much ..." works as well as two sentences
+  const clauses = doz(text).split(/[.;,]|\band (?=how )/).map((s) => s.trim()).filter(Boolean);
+  const q = clauses.find((c) => /\bhow (?:much|many|far)\b/.test(c) || /\bwhat (?:is|would be|will be) the (?:cost|price)\b/.test(c));
+  if (!q) return null;
+  const stmt = clauses.filter((c) => c !== q).join(". ");
+  if (!stmt) return null;
+  // parse the rate statement: A W1 [of S1]  (per | for | cost)  B W2  (also "ITEM at N for M UNIT")
+  let A, W1, S1, B, W2, money = false, m;
+  if ((m = /(\d+(?:\.\d+)?)\s+([a-z]+)(?:\s+of\s+([a-z]+))?\s+(?:for|per|to make|to bake|makes?|in|every|to run|to travel|to drive|to go|to cover)\s+(?:a |an |the )?(\d+(?:\.\d+)?)\s+([a-z]+)/.exec(stmt))) {
+    [, A, W1, S1, B, W2] = m;
+  } else if ((m = /(\d+(?:\.\d+)?)\s+([a-z]+)(?:\s+of\s+([a-z]+))?\s+(?:cost|costs)\s+(\d+(?:\.\d+)?)\s+(dollars?|pounds?|euros?)/.exec(stmt))) {
+    [, A, W1, S1, B, W2] = m; money = true;
+  } else if ((m = /([a-z]+)\s+(?:at|for)\s+(\d+(?:\.\d+)?)\s+(?:for|per)\s+(?:a |an |the )?(\d+(?:\.\d+)?)\s+([a-z]+)/.exec(stmt))) {
+    W1 = m[1]; A = m[2]; B = m[3]; W2 = m[4]; // "pencils at 3 for 1 dollar"
+  } else return null;
+  if (!(+A > 0 && +B > 0)) return null;
+  if (/dollar|pound|euro|cent/.test(W2)) money = true;
+  const isA = (w) => same(w, W1) || same(w, S1);
+  const isB = (w) => same(w, W2);
+  // parse the question
+  let ask = null, gN = null, giv = null, wantMoney = false, mm;
+  if ((mm = /how many (?:([a-z]+) )?can (?:you|i|we|he|she|they) (?:buy|get|purchase|afford) (?:for|with) (\d+(?:\.\d+)?)\s+([a-z]+)/.exec(q))) { ask = mm[1] || W1; gN = mm[2]; giv = mm[3]; }
+  else if ((mm = /how (?:much|many) ([a-z]+)(?: of [a-z]+)?.*?\b(?:for|to make|per|in|on|using|with|to run|to travel|to drive|to go|to cover) (?:a |an |the )?(\d+(?:\.\d+)?)\s+([a-z]+)/.exec(q))) { ask = mm[1]; gN = mm[2]; giv = mm[3]; }
+  else if ((mm = /how (?:much|many) (?:do|does|would|will) (\d+(?:\.\d+)?)\s+([a-z]+)(?: of [a-z]+)? cost/.exec(q))) { wantMoney = true; gN = mm[1]; giv = mm[2]; }
+  else if ((mm = /what (?:is|would be|will be) the (?:cost|price) of (\d+(?:\.\d+)?)\s+([a-z]+)/.exec(q))) { wantMoney = true; gN = mm[1]; giv = mm[2]; }
+  else if ((mm = /how far can (?:it|he|she|they) (?:travel|go|drive|run) (?:on|with|using) (\d+(?:\.\d+)?)\s+([a-z]+)/.exec(q))) { ask = W2; gN = mm[1]; giv = mm[2]; } // "how far" asks for the distance side
+  else return null;
+  const givA = isA(giv), givB = isB(giv);
+  if (givA === givB) return null; // the given quantity must match exactly one side
+  if (wantMoney) {
+    if (!money || !givA) return null; // cost only known when items (A) are given and B is the money
+    return E(`${B}/${A}*${gN}`, `unit price ${B}/${A} per ${sing(W1)}, times ${gN}`, [`The answer is in ${sing(W2)}.`]);
+  }
+  const askA = isA(ask), askB = isB(ask);
+  if (askA && givB) return E(`${A}/${B}*${gN}`, `rate ${A} ${W1} per ${B} ${W2}: ${A}/${B} x ${gN}`, ["Assumes a constant rate."]);
+  if (askB && givA) return E(`${B}/${A}*${gN}`, `rate ${B} ${W2} per ${A} ${W1}: ${B}/${A} x ${gN}`, ["Assumes a constant rate."]);
+  return null;
+}
+
 // ---------------------------------------------------------------- direct arithmetic story problems
 // Plain add/subtract/multiply narratives that carry no unknown ("Ann has 12 apples, buys 5 more
 // and gives 3 away. How many does she have?"). These are NOT algebra, so the older algebraic
@@ -2239,9 +2313,9 @@ const CATEGORIES = [
   ["word-digits", digitProblems],
   ["word-geometry", geometry], ["word-geometry", boxVolume], ["word-probability", probability], ["word-rate", unitRates], ["word-ratio", ratios], ["word-ratio", ratioMore],
   ["word-system", systems], ["word-angles", angles],
-  // run last: plain arithmetic stories and direct distance=rate*time, only when the algebraic
-  // handlers above have refused (they need an unknown; these carry none).
-  ["word-distance", distanceDirect], ["word-arith", arithmeticStory],
+  // run last: proportions (natural phrasing), plain arithmetic stories and direct distance=rate*time,
+  // only when the algebraic handlers above have refused (they need an unknown; these carry none).
+  ["word-rate", inverseWork], ["word-rate", proportions], ["word-distance", distanceDirect], ["word-arith", arithmeticStory],
 ];
 export function wordPatterns({ wordsToNumbers }) {
   return [{

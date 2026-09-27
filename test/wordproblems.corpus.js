@@ -334,4 +334,25 @@ export const CASES = [
   ["distance", "A cyclist rides 30 miles in 2 hours. How fast is she going?", 15],
   ["distance", "A runner covers 100 meters at 5 m/s. How long does it take?", 20],
   ["trap", "A car travels 120 miles in 2 hours. What is its speed in km/h?", { refuse: true }],
+
+  // ---------------------------------------------------------------- proportions: natural buy/afford phrasing
+  ["rate", "A store sells pencils at 3 for a dollar. How many can you buy with 12 dollars?", 36],
+  ["rate", "Apples cost 2 dollars for 5. How many apples can you buy with 8 dollars?", 20],
+  ["rate", "If a dozen eggs cost 3 dollars, how much do 30 eggs cost?", 7.5],
+  // ---------------------------------------------------------------- inverse proportion (more workers, less time)
+  ["rate", "If 3 workers build a wall in 8 days, how long for 6 workers?", 4],
+  ["rate", "If 6 painters paint a house in 10 days, how long for 4 painters?", 15],
+  ["rate", "5 workers dig a trench in 12 hours. How many hours for 10 workers?", 6],
+  // ---------------------------------------------------------------- two numbers: "a number is k times another"
+  ["two-numbers", "A number is 4 times another and their sum is 35. Find the numbers.", { nums: [28, 7] }],
+  ["two-numbers", "A number is 3 times another and their sum is 48. Find the numbers.", { nums: [36, 12] }],
+  // ---------------------------------------------------------------- compound growth (grows R% a year)
+  ["interest", "An investment of 1000 dollars grows at 5 percent per year. What is it worth after 3 years?", 1157.625],
+  ["interest", "An investment of 2000 dollars grows at 10 percent per year. What is it worth after 2 years?", 2420],
+  // ---------------------------------------------------------------- rectangle with a possessive fact
+  ["geometry", "A rectangle's perimeter is 24 and its length is twice its width. Find the width.", { nums: [4, 8] }],
+  // ---------------------------------------------------------------- these still need a step the engine won't guess: refuse
+  ["trap", "A rectangle's perimeter is 24 and its length is twice its width. Find the area.", { refuse: true }],
+  ["trap", "A father is 30 years older than his son. In 10 years he will be twice as old. How old is the son now?", { refuse: true }],
+  ["trap", "If 4 machines make 100 parts in 6 hours, how long would 3 machines take?", { refuse: true }],
 ];
