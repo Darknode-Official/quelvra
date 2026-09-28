@@ -460,7 +460,8 @@ export function initInk(deps) {
     add(t.text, null, t.fixed ? null : t.confidence, true);
     if (t.fixed && t.original !== t.text) add(t.original, null, null, false);
     for (const a of t.alternatives) add(a.text, a.char, a.score, false);
-    alts.replaceChildren(h("span", { class: "tiny muted ink-alts-l" }, t.alternatives.length ? `"${t.text}" could also be:` : `No alternatives for "${t.text}".`), ...choices);
+    alts.replaceChildren(h("span", { class: "tiny muted ink-alts-l" }, t.alternatives.length ? `"${t.text}" could also be:` : `No alternatives for "${t.text}".`), ...choices,
+      ...(t.note && !t.fixed ? [h("span", { class: "tiny muted ink-alts-why" }, "Why: " + t.note)] : []));
     alts.hidden = false;
     renderChips();
     redraw(); paintPhoto();

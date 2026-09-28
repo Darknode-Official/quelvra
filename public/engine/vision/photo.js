@@ -14,7 +14,7 @@
 // (raster.js); nothing is downloaded.
 
 import { METRICS } from "./glyphs.js";
-import { analyzeLayout, estimateEm, contextRerank } from "./layout.js";
+import { analyzeLayout, estimateEm, contextRerank, verticalFit, wordContext, lineVeto } from "./layout.js";
 
 export const LOW_CONFIDENCE = 0.7;
 const GRID = 16;
@@ -504,6 +504,9 @@ export function recognizeImage(img, opts = {}) {
   }));
   symbols.sort((a, b) => a.bbox.x0 - b.bbox.x0);
   contextRerank(symbols, { em });
+  verticalFit(symbols, { em });
+  wordContext(symbols, { em });
+  lineVeto(symbols, { em });
   const layout = analyzeLayout(symbols, { em });
   const lowConfidence = symbols.map((s, i) => (s.confidence < threshold ? i : -1)).filter((i) => i >= 0);
   return {

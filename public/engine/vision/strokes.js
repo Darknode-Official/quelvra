@@ -9,16 +9,19 @@
 //   2. segment consecutive strokes into symbols with dynamic programming: every run of 1..4
 //      consecutive, spatially overlapping strokes is a candidate symbol whose cost is its best
 //      $P point-cloud match (Vatavu, Anthony, Wobbrock 2012) against templates with the SAME
-//      stroke count, plus a size-plausibility penalty and a per-symbol penalty, so "=" beats
-//      two "-" and "i" beats "1" + ".";
+//      stroke count (each multi-stroke symbol also has lift-free one-stroke templates, so an
+//      "x" or "t" written without lifting the pen still matches), plus a size-plausibility
+//      penalty and a per-symbol penalty, so "=" beats two "-" and "i" beats "1" + ".";
 //   3. re-run with the text size estimated from the first pass (size cues separate "." from "o",
 //      "," from ")", "c" from "(");
-//   4. hand the symbols to layout.js for superscripts, subscripts, fractions and radicals.
+//   4. context (layout.js): line position (q hangs below the line, 9 does not), function names
+//      ("1n(" is ln), and flags for readings that contradict the geometry or have a look-alike;
+//   5. hand the symbols to layout.js for superscripts, subscripts, fractions and radicals.
 // Every symbol reports a confidence and its top alternatives; symbols below the threshold are
 // listed in lowConfidence. Nothing is solved here.
 
-import { VARIANTS, METRICS, typeset } from "./glyphs.js";
-import { analyzeLayout, estimateEm, contextRerank } from "./layout.js";
+import { VARIANTS, METRICS, typeset, L } from "./glyphs.js";
+import { analyzeLayout, estimateEm, contextRerank, verticalFit, wordContext, lineVeto } from "./layout.js";
 
 const NP = 32;       // points per cloud (fine pass)
 const NC = 16;       // points per cloud (coarse pass)
@@ -26,7 +29,7 @@ const SHORTLIST = 28;
 const SYMBOL_PENALTY = 0.05;
 const POWER = 6;      // sharpness of the distance-ratio probabilities
 const DIST_FLOOR = 0.02;
-const PRIORS = { l: 0.002, "|": 0.002, "^": 0.01, ",": 0.005 }; // small biases toward the commoner reading
+const PRIORS = { l: 0.002, "|": 0.002, "^": 0.01, ",": 0.005, k: 0.012, o: 0.008, q: 0.008, g: 0.004 }; // small biases toward the commoner reading
 export const LOW_CONFIDENCE = 0.7;
 
 // ---------------------------------------------------------------------------------------------
@@ -238,13 +241,38 @@ function makeTemplate(char, pxStrokes, meta = {}) {
   return { char, n: pxStrokes.length, fine: cloud(pxStrokes, NP), coarse: cloud(pxStrokes, NC), feat: features(pxStrokes), boxes: strokeBoxes(pxStrokes), ...meta };
 }
 
+// Lift-free versions of a multi-stroke variant: the strokes in every order and direction,
+// each end joined to the next start by a straight pen path. $P ignores direction, so only the
+// connecting segments tell the versions apart; duplicates (a whole path reversed) are dropped.
+// Symbols whose parts are never joined in practice (dots, "=", whose joined form IS a "z") are
+// left out.
+const NO_JOIN = new Set(["=", "÷", "i", "j", "!", "≤", "≥"]);
+const JOIN_COPIES = 2;
+const JOIN_PENALTY = 0.007; // a lift-free reading is a little less likely than the usual strokes
+function joinings(strokes) {
+  const out = [], seen = new Set();
+  for (const order of perms(strokes.length)) {
+    for (let mask = 0; mask < 1 << strokes.length; mask++) {
+      const parts = order.map((k, i) => ((mask >> i) & 1 ? strokes[k].slice().reverse() : strokes[k]));
+      const key = parts.map((p) => p[0].join() + ">" + p[p.length - 1].join()).join("|");
+      const rkey = parts.slice().reverse().map((p) => p[p.length - 1].join() + ">" + p[0].join()).join("|");
+      if (seen.has(key) || seen.has(rkey)) continue;
+      seen.add(key);
+      const path = [];
+      for (const p of parts) path.push(...(path.length ? L(path[path.length - 1], p[0]).slice(1, -1) : []), ...p);
+      out.push([path]);
+    }
+  }
+  return out;
+}
+
 let BUILTIN = null;
 const USER = []; // { char, strokes } as given by the caller (pixel coordinates)
 let USER_T = [];
 
 export function builtinTemplates({ copies = 6, seed = 7 } = {}) {
   if (BUILTIN && BUILTIN.copies === copies && BUILTIN.seed === seed) return BUILTIN.list;
-  const rand = mulberry(seed);
+  const rand = mulberry(seed), jrand = mulberry(seed + 1000); // joined copies do not shift the others
   const list = [];
   for (const [ch, vs] of Object.entries(VARIANTS)) {
     for (const v of vs) {
@@ -252,6 +280,16 @@ export function builtinTemplates({ copies = 6, seed = 7 } = {}) {
       for (let k = 0; k < copies; k++) {
         const d = distortStrokes(v.strokes, rand, { em: 100, rot: 4, shear: 0.08, aniso: 0.08, jitter: 0.006, wobble: 0.012 });
         list.push(makeTemplate(ch, d, { variant: v.name + "~" + k, size: naturalSize(v.strokes) }));
+      }
+      // the same symbol written without lifting the pen ("x" as one loop, "t" and "4" in one go)
+      if (v.strokes.length > 1 && !NO_JOIN.has(ch)) {
+        for (const [ji, js] of joinings(v.strokes).entries()) {
+          list.push(makeTemplate(ch, emToPixels(js), { variant: v.name + "+j" + ji, size: naturalSize(v.strokes), joined: true }));
+          for (let k = 0; k < JOIN_COPIES; k++) {
+            const d = distortStrokes(js, jrand, { em: 100, rot: 4, shear: 0.08, aniso: 0.08, jitter: 0.006, wobble: 0.012 });
+            list.push(makeTemplate(ch, d, { variant: v.name + "+j" + ji + "~" + k, size: naturalSize(v.strokes), joined: true }));
+          }
+        }
       }
     }
   }
@@ -310,9 +348,21 @@ export function classifyGroup(strokes, { em = null, templates = null } = {}) {
   const maxDim = Math.max(b.x1 - b.x0, b.y1 - b.y0);
   const coarse = cloud(strokes, NC), fine = cloud(strokes, NP);
   const feat = features(strokes), boxes = strokeBoxes(strokes);
-  const scored = cand.map((t) => ({ t, f: featureDistance(feat, t.feat) + STRUCT_W * structureDistance(boxes, t.boxes) })).map((o) => ({ ...o, d: greedyMatch(coarse, o.t.coarse) + o.f }))
-    .sort((p, q) => p.d - q.d);
-  const short = scored.slice(0, SHORTLIST);
+  // coarse pass: keep the SHORTLIST best; a template that cannot beat the current worst of
+  // those is abandoned early (same shortlist as matching everything in full, much less work)
+  const pre = cand.map((t) => ({ t, f: featureDistance(feat, t.feat) + STRUCT_W * structureDistance(boxes, t.boxes) + (t.joined ? JOIN_PENALTY : 0) }))
+    .sort((p, q) => p.f - q.f);
+  const short = [];
+  for (const o of pre) {
+    const worst = short.length < SHORTLIST ? Infinity : short[short.length - 1].d;
+    if (o.f >= worst) break; // sorted by f: nothing later can get in
+    const d = greedyMatch(coarse, o.t.coarse, (worst - o.f) * NC) + o.f;
+    if (d >= worst) continue;
+    let k = short.length;
+    while (k > 0 && short[k - 1].d > d) k--;
+    short.splice(k, 0, { ...o, d });
+    if (short.length > SHORTLIST) short.pop();
+  }
   const best = new Map();
   for (const { t, f } of short) {
     const cur = best.get(t.char);
@@ -371,7 +421,7 @@ function linked(a, b, em) {
   // strokes of one symbol cross or touch (x, +, 4, t, pi) or are stacked with strong
   // horizontal overlap (=, i, j, !, ÷, ≤). Whether a linked cluster really is one symbol is
   // decided by the match cost including the stroke-structure term.
-  const pad = 0.04 * em;
+  const pad = 0.06 * em; // pens that meet by eye miss by a few pixels
   const ovx = overlap1(a.x0, a.x1, b.x0, b.x1), ovy = overlap1(a.y0, a.y1, b.y0, b.y1);
   const minW = Math.min(a.x1 - a.x0, b.x1 - b.x0), minH = Math.min(a.y1 - a.y0, b.y1 - b.y0);
   if (ovx >= -pad && ovy >= -pad && (ovx > 0 || ovy >= 0.5 * minH)) return true; // touching / crossing
@@ -483,6 +533,71 @@ function mergeStackedBars(symbols, em) {
   }
 }
 
+// Letters and digits that differ by a detail a hurried hand drops: when the runner-up is the
+// top reading's twin and not far behind, the symbol is flagged for the reader to confirm rather
+// than trusted silently ("4" vs "q", "x" vs "k"). Letters settled by a function name are not.
+const TWINS = ["4q", "4g", "9q", "9g", "gq", "xk", "0o", "5s", "uv", "uw", "nh", "tf", "yq", "rv", "+r", "+t"]; // pairs that involve the newer letters
+const RARE = "kqgoshfruvwmp";
+function flagTwins(symbols) {
+  for (const s of symbols) {
+    if (s.word || !s.alternatives) continue;
+    if (s.confidence < LOW_CONFIDENCE) continue;
+    let twin = s.alternatives.find((a) => TWINS.some((p) => p.includes(s.char) && p.includes(a.char) && a.char !== s.char));
+    if (twin && twin.score < 0.08) twin = null;
+    // a position check settles a twin only when the two sit differently on the line (q vs 9, not q vs g)
+    if (twin && s.fitConfirmed && METRICS[twin.char] && (Math.abs(METRICS[twin.char].lo - METRICS[s.char].lo) > 0.1 || Math.abs(METRICS[twin.char].hi - METRICS[s.char].hi) > 0.1)) twin = null;
+    if (!twin && s.fitConfirmed) continue;
+    // letters that are rare in maths need a clear margin over whatever came second
+    if (!twin && RARE.includes(s.char) && s.alternatives[0] && s.alternatives[0].score >= 0.08) twin = s.alternatives[0];
+    if (twin) {
+      s.confidence = LOW_CONFIDENCE - 0.01;
+      s.context = s.context || `could also be "${twin.char}"`;
+    }
+  }
+}
+
+// A symbol much wider than its reading ever is (for its height) is probably two symbols read as
+// one ("lo" as "b", "3." as "1"): flagged.
+let WIDEST = null;
+function widest(ch) {
+  if (!WIDEST) {
+    WIDEST = {};
+    for (const [c, vs] of Object.entries(VARIANTS)) WIDEST[c] = Math.max(...vs.map((v) => { const b = bboxOfEm(v.strokes); return (b.x1 - b.x0) / Math.max(b.y1 - b.y0, 0.05); }));
+  }
+  return WIDEST[ch];
+}
+function bboxOfEm(strokes) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const s of strokes) for (const [x, y] of s) { if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+  return { x0, y0, x1, y1 };
+}
+function flagWide(symbols, em) {
+  for (const s of symbols) {
+    const m = METRICS[s.char], w = widest(s.char);
+    if (!s.bbox || !m || !w || !["letter", "digit"].includes(m.kind) || s.confidence < LOW_CONFIDENCE) continue;
+    const bw = s.bbox.x1 - s.bbox.x0, bh = s.bbox.y1 - s.bbox.y0;
+    // allow for slant and sloppiness: 0.3 em of extra width plus 45%
+    if (bw > w * 1.45 * bh + 0.3 * em) { s.confidence = LOW_CONFIDENCE - 0.01; s.context = s.context || "wider than this symbol usually is: it may be two symbols"; }
+  }
+}
+
+// Two symbols stacked directly on top of each other with no bar, radical or integral involved
+// are not a row: something (usually a fraction bar merged into a "1" serif or a "5") was
+// misread, so both are flagged.
+const STACK_OK = new Set(["-", "=", "√", "∫", "≤", "≥", "÷", ".", ","]);
+function flagStacked(symbols, em) {
+  for (const a of symbols) for (const b of symbols) {
+    if (a === b || !a.bbox || !b.bbox || STACK_OK.has(a.char) || STACK_OK.has(b.char)) continue;
+    const ov = Math.min(a.bbox.x1, b.bbox.x1) - Math.max(a.bbox.x0, b.bbox.x0);
+    const narrow = Math.min(a.bbox.x1 - a.bbox.x0, b.bbox.x1 - b.bbox.x0);
+    if (ov < 0.6 * narrow || !(b.bbox.y0 >= a.bbox.y1 - 0.05 * em) || b.bbox.y0 - a.bbox.y1 > 1.2 * em) continue;
+    if (symbols.some((c) => STACK_OK.has(c.char) && c.char !== "." && c.char !== "," && c.bbox && c.bbox.x0 < a.bbox.x1 && c.bbox.x1 > a.bbox.x0 && c.bbox.y0 >= a.bbox.y1 - 0.1 * em && c.bbox.y1 <= b.bbox.y0 + 0.1 * em)) continue;
+    // the limits of an integral sit one above the other by design
+    if (symbols.some((c) => c.char === "∫" && c.bbox && c.bbox.x1 < Math.min(a.bbox.x0, b.bbox.x0) + 0.3 * em && c.bbox.x1 > a.bbox.x0 - 1.5 * em && c.bbox.y0 < a.bbox.y1 && c.bbox.y1 > b.bbox.y0)) continue;
+    for (const s of [a, b]) if (s.confidence >= LOW_CONFIDENCE) { s.confidence = LOW_CONFIDENCE - 0.01; s.context = s.context || "stacked over another symbol with no fraction bar between them"; }
+  }
+}
+
 export function recognizeStrokes(input, opts = {}) {
   const strokes = cleanStrokes(input);
   const threshold = opts.threshold ?? LOW_CONFIDENCE;
@@ -512,7 +627,13 @@ export function recognizeStrokes(input, opts = {}) {
     };
   });
   contextRerank(symbols, { em });
+  verticalFit(symbols, { em });
+  wordContext(symbols, { em });
+  lineVeto(symbols, { em });
   mergeStackedBars(symbols, em);
+  flagTwins(symbols);
+  flagStacked(symbols, em);
+  flagWide(symbols, em);
   const layout = analyzeLayout(symbols, { em });
   const lowConfidence = symbols.map((s, i) => (s.confidence < threshold ? i : -1)).filter((i) => i >= 0);
   return { text: layout.text, symbols, lowConfidence, layout, em };

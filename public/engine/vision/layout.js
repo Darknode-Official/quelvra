@@ -120,6 +120,156 @@ export function contextRerank(symbols, opts = {}) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Vertical fit: shapes that differ mostly in where they sit ("q" hangs below the line, "9"
+// does not; "o" is x-height, "0" is digit height) are re-weighted by how well each candidate's
+// natural extent fits the line's baseline and size, taken from the confident symbols around it.
+// Only symbols on the line itself are touched (scripts sit elsewhere by design), and a changed
+// reading keeps a confidence no higher than its re-weighted share.
+const FIT_SIGMA = 0.11;
+// The baseline under a symbol from nearby anchors, or null when they do not agree on one line
+// (a raised exponent is also a digit; with it in the mix the "line" would sit halfway up).
+function lineBaseAt(anchors, near, em) {
+  if (near.length < 2) return null;
+  const med = median(near.map((a) => a.base));
+  const agree = near.filter((a) => Math.abs(a.base - med) < 0.15 * em);
+  if (agree.length < 2 || agree.length < 0.6 * near.length) return null;
+  return median(agree.map((a) => a.base));
+}
+export function verticalFit(symbols, opts = {}) {
+  const em = opts.em || estimateEm(symbols);
+  const anchors = [];
+  symbols.forEach((s, i) => {
+    const m = METRICS[s.char];
+    if (!m || !s.bbox || (s.confidence ?? 1) < 0.8 || !(m.kind === "digit" || m.kind === "letter")) return;
+    anchors.push({ i, base: s.bbox.y1 + m.lo * symbolEm(s.char, s.bbox) || s.bbox.y1, y0: s.bbox.y0, y1: s.bbox.y1, x: cx(s.bbox) });
+  });
+  symbols.forEach((s, i) => {
+    if (!s.bbox || !(s.alternatives || []).length) return;
+    const cands = [{ char: s.char, score: s.confidence }, ...s.alternatives].filter((c) => METRICS[c.char] && ["digit", "letter"].includes(METRICS[c.char].kind));
+    if (cands.length < 2 || cands[0].char !== s.char) return;
+    // the line: nearby anchors that share this symbol's vertical band
+    const near = anchors.filter((a) => a.i !== i && Math.abs(a.x - cx(s.bbox)) < 4 * em && a.y1 > s.bbox.y0 && a.y0 < s.bbox.y1);
+    const base = lineBaseAt(anchors, near, em);
+    if (base == null) return;
+    const top = s.bbox.y0, bot = s.bbox.y1;
+    if (bot < base - 0.45 * em || top > base) return; // raised or lowered script: not on the line
+    const w = cands.map((c) => {
+      const m = METRICS[c.char];
+      const err = (Math.abs(bot - (base - m.lo * em)) + Math.abs(top - (base - m.hi * em))) / em;
+      return { ...c, fit: Math.exp(-(err * err) / (2 * FIT_SIGMA * FIT_SIGMA)) };
+    });
+    // some reading must fit the line well in absolute terms, or this is not a normal-size glyph
+    // on the line (a limit, a script, a stray mark) and position says nothing
+    if (Math.max(...w.map((c) => c.fit)) < 0.5) return;
+    const Z = w.reduce((a, c) => a + c.score * c.fit, 0);
+    if (!(Z > 0)) return;
+    const ranked = w.map((c) => ({ char: c.char, score: (c.score * c.fit) / Z })).sort((a, b) => b.score - a.score);
+    if (ranked[0].char === s.char) {
+      // position agrees with the shape: that is evidence too ("q" hanging below the line)
+      if (ranked[0].score > s.confidence && ranked[0].score >= 0.85) {
+        s.confidence = Math.min(ranked[0].score, 0.85);
+        s.alternatives = ranked.slice(1, 4).map((c) => ({ char: c.char, score: +c.score.toFixed(4) }));
+        s.fitConfirmed = true;
+      }
+      return;
+    }
+    if (ranked[0].score < 0.6) return;
+    const old = s.char, shapeScore = w.find((c) => c.char === ranked[0].char).score;
+    s.char = ranked[0].char;
+    // position alone cannot rescue a shape that barely matched: such a change stays flagged
+    s.confidence = shapeScore < 0.15 ? Math.min(ranked[0].score, 0.69) : Math.min(ranked[0].score, 0.9);
+    s.alternatives = ranked.slice(1, 4).map((c) => ({ char: c.char, score: +c.score.toFixed(4) }));
+    s.context = `height and position on the line fit "${s.char}" better than "${old}"`;
+  });
+  return symbols;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Position vetoes: a reading that contradicts where the symbol sits on the line is flagged
+// (never changed): a "g" that does not hang below the line, a "," that does not drop below it,
+// a "." that does, an "x" twice as tall as an x (two symbols read as one), a "-" lying on the
+// baseline (the foot of a "1").
+export function lineVeto(symbols, opts = {}) {
+  const em = opts.em || estimateEm(symbols);
+  const anchors = [];
+  symbols.forEach((s, i) => {
+    const m = METRICS[s.char];
+    if (!m || !s.bbox || (s.confidence ?? 1) < 0.8 || !(m.kind === "digit" || (m.kind === "letter" && m.lo === 0))) return;
+    anchors.push({ i, base: s.bbox.y1, y0: s.bbox.y0, y1: s.bbox.y1, x: cx(s.bbox) });
+  });
+  const flag = (s, why) => { if ((s.confidence ?? 1) >= 0.7) { s.confidence = 0.69; s.context = s.context || why; } };
+  symbols.forEach((s, i) => {
+    const m = METRICS[s.char];
+    if (!m || !s.bbox || s.word) return;
+    const near = anchors.filter((a) => a.i !== i && Math.abs(a.x - cx(s.bbox)) < 3 * em && a.y1 > s.bbox.y0 - 0.3 * em && a.y0 < s.bbox.y1 + 0.3 * em);
+    const base = lineBaseAt(anchors, near, em);
+    if (base == null) return; // not enough of a line to judge by
+    const top = s.bbox.y0, bot = s.bbox.y1, h = bot - top;
+    const onLine = top < base - 0.3 * em && bot > base - 0.12 * em;
+    if (m.kind === "letter" && m.lo <= -0.15 && onLine && Math.abs(bot - base) < 0.07 * em && h < 0.9 * em) flag(s, `does not hang below the line as "${s.char}" does`);
+    else if ((m.kind === "letter" || m.kind === "digit") && onLine && h > 1.45 * (m.hi - m.lo) * em && h > 0.75 * em) flag(s, "taller than this symbol is: it may be two symbols");
+    else if (s.char === "," && bot < base + 0.04 * em && Math.abs(bot - base) < 0.15 * em) flag(s, 'sits on the line like "." rather than dropping below it');
+    else if (s.char === "." && bot > base + 0.12 * em) flag(s, 'drops below the line like ","');
+    else if (s.char === "-" && Math.abs(cy(s.bbox) - base) < 0.12 * em && (s.bbox.x1 - s.bbox.x0) < 0.7 * em) flag(s, "lies on the baseline, not at the height of a minus sign");
+  });
+  return symbols;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Word context: a run of neighbouring symbols on one line whose readings (top choice,
+// alternatives, or a look-alike) spell a function name IS that name, so "1n(x)" reads as
+// ln(x) and "c0s" as cos. The letters stay separate symbols (each keeps its own geometry and
+// can be corrected on its own) and are marked word = true so the text glues them together.
+// Guards against inventing words: at least half of the letters must already be the top
+// reading, the run must be followed closely by its argument (and by "(" for two-letter names),
+// and a letter that had to change is capped below certainty and says why.
+const WORDS = ["arcsin", "arccos", "arctan", "sinh", "cosh", "tanh", "sin", "cos", "tan", "sec", "csc", "cot", "log", "ln", "exp", "max", "min", "abs", "det", "gcd", "lcm"];
+const LOOKALIKE = {
+  l: "1|/∫!", o: "0θ", s: "5", i: "j!", n: "hrπm", g: "9q", t: "f+", a: "d", c: "e(", e: "cθ", x: "k", h: "nb", m: "n", r: "n", d: "a", b: "h", p: "", q: "9g",
+};
+export function wordContext(symbols, opts = {}) {
+  const em = opts.em || estimateEm(symbols);
+  const order = symbols.map((s, i) => i).filter((i) => symbols[i].bbox && symbols[i].char !== "?").sort((a, b) => cx(symbols[a].bbox) - cx(symbols[b].bbox));
+  const fits = (s, L) => s.char === L || (s.alternatives || []).some((a) => a.char === L) || (LOOKALIKE[L] || "").includes(s.char);
+  const near = (a, b) => {
+    const A = a.bbox, B = b.bbox;
+    const gap = B.x0 - A.x1, ov = Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0);
+    return gap < 0.9 * em && gap > -0.35 * em && ov > 0.3 * Math.min(A.y1 - A.y0, B.y1 - B.y0);
+  };
+  const used = new Set();
+  for (let p = 0; p < order.length; p++) {
+    if (used.has(order[p])) continue;
+    for (const w of WORDS) {
+      if (p + w.length > order.length) continue;
+      const run = order.slice(p, p + w.length).map((i) => symbols[i]);
+      if (run.some((s) => s.word) || !run.every((s, k) => fits(s, w[k]))) continue;
+      if (!run.every((s, k) => k === 0 || near(run[k - 1], s))) continue;
+      const exact = run.filter((s, k) => s.char === w[k]).length;
+      if (exact * 2 < w.length) continue;
+      const next = symbols[order[p + w.length]];
+      if (!next || !(next.bbox.x0 - run[run.length - 1].bbox.x1 < 1.2 * em)) continue;
+      if (w.length === 2 && next.char !== "(") continue;
+      // a letter sitting just before the run would make it part of a longer word we do not know
+      const prev = p > 0 ? symbols[order[p - 1]] : null;
+      if (prev && /^[a-z]$/.test(prev.char) && near(prev, run[0])) continue;
+      run.forEach((s, k) => {
+        s.word = true;
+        s.wordStart = k === 0;
+        if (s.char === w[k]) { s.confidence = Math.max(s.confidence, 0.72); return; } // the name confirms it
+        const alt = (s.alternatives || []).find((a) => a.char === w[k]);
+        s.alternatives = [{ char: s.char, score: s.confidence }, ...(s.alternatives || []).filter((a) => a.char !== w[k])].slice(0, 3);
+        s.char = w[k];
+        s.confidence = Math.min(0.9, Math.max(alt ? alt.score : 0, s.confidence, 0.72));
+        s.context = `part of the function name "${w}"`;
+      });
+      for (let k = 0; k < w.length; k++) used.add(order[p + k]);
+      break;
+    }
+  }
+  return symbols;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Region parsing: pull out fractions and radicals (widest first), then read the row.
 function claimAboveBelow(bar, nodes, em) {
   const b = bar.bbox, w = b.x1 - b.x0, tol = 0.08 * w;
@@ -217,6 +367,10 @@ function relation(base, it, em, inScript = false) {
     const smaller = ratio != null && ratio < 0.85;
     const bc = cy(base.bbox);
     if (d > 0.5 || (d > 0.3 && it.bbox.y1 < bc) || (smaller && (d > 0.2 || it.bbox.y1 < bc))) return "sup";
+    // numbers almost never carry subscripts: after a digit only a clearly lowered symbol is one
+    // (a small "s" written a little low after "3" is "3s", not "3_s")
+    const digitBase = base.type === "sym" && METRICS[base.char] && METRICS[base.char].kind === "digit";
+    if (digitBase) return d < -0.4 ? "sub" : "same";
     if (d < -0.4 || (d < -0.3 && it.bbox.y0 > bc) || (smaller && (d < -0.08 || it.bbox.y0 > bc - 0.05 * bem))) return "sub";
     return "same";
   }
@@ -273,7 +427,11 @@ class Emitter {
 }
 
 function emitNode(n, E, symbols, alone) {
-  if (n.type === "sym") { E.put(TEXT[n.char] ?? n.char, n.idx); return; }
+  if (n.type === "sym") {
+    const s = symbols[n.idx];
+    E.put(TEXT[n.char] ?? n.char, n.idx, !(s && s.word && !s.wordStart)); // letters of one word are not spaced apart
+    return;
+  }
   if (n.type === "row") { emitRow(n, E, symbols); return; }
   if (n.type === "frac") {
     if (!alone) E.put("(");

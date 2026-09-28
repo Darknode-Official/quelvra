@@ -365,6 +365,7 @@ math { font-family: var(--math); }
 .ink-gap { width: 6px; }
 .ink-alts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card-2); }
 .ink-alts-l { width: 100%; }
+.ink-alts-why { width: 100%; }
 .ink-alt { gap: 8px; }
 .ink-alt .mono { font-size: 1rem; }
 .ink-alt.current { border-color: var(--acc); }

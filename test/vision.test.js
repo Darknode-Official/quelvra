@@ -80,6 +80,71 @@ for (const [spec, want] of EXPR) {
   });
 }
 
+// function names, the newer letters, and a digit before a letter (not a subscript)
+const WORDS_EXPR = [
+  ["sin(x)", "sin(x)"], ["cos(2x)", "cos(2x)"], ["tan(x)", "tan(x)"], ["log(x)", "log(x)"], ["ln(x)", "ln(x)"],
+  ["f(x)=x+1", "f(x)=x+1"], ["k+m=5", "k+m=5"], ["w=h+1", "w=h+1"], ["3s+4", "3s+4"], ["u+v", "u+v"],
+];
+for (const [spec, want] of WORDS_EXPR) {
+  test(`strokes: neat handwriting of ${want}`, () => {
+    const R = rng(want.length * 97 + 3);
+    let exact = 0;
+    const N = 6;
+    for (let k = 0; k < N; k++) {
+      const { strokes } = synthesizeStrokes(spec, R.next, { em: 32 + R.next() * 28, ...NEAT });
+      const r = recognizeStrokes(strokes);
+      checkContract(r);
+      if (r.text === want) exact++;
+    }
+    ok(exact >= N - 1, `${exact}/${N} exact`);
+  });
+}
+
+test("strokes: a function name is read as one word even when a letter looks like a digit", () => {
+  const still = { em: 44, rot: 0, shear: 0, aniso: 0, jitter: 0, wobble: 0, drift: 0 };
+  // "ln" written with a flagged "1" for the l, "cos" with a digit-height "0"
+  const r = recognizeStrokes(synthesizeStrokes([{ glyph: "1", variant: 0 }, "n(x)"], rng(1).next, still).strokes);
+  eq(r.text, "ln(x)");
+  ok(r.symbols[0].context && /ln/.test(r.symbols[0].context), "the changed letter says why");
+  const r2 = recognizeStrokes(synthesizeStrokes(["c", { glyph: "0" }, "s(x)"], rng(2).next, still).strokes);
+  eq(r2.text, "cos(x)");
+  // letters that spell no function stay separate factors
+  eq(recognizeStrokes(synthesizeStrokes("ab(x)", rng(3).next, still).strokes).text, "a b(x)");
+});
+
+test("strokes: symbols written without lifting the pen", () => {
+  const R = rng(77);
+  let n = 0, top1 = 0;
+  for (const ch of ["x", "t", "4", "π", "+", "y", "k", "5", "7"]) for (const v of VARIANTS[ch]) {
+    if (v.strokes.length < 2) continue;
+    for (let k = 0; k < 3; k++) {
+      const px = distortStrokes(v.strokes, R.next, { em: 44, x: 100, y: 200, ...NEAT });
+      const one = [];
+      for (const st of px) {
+        if (one.length) { const a = one[one.length - 1], b = st[0]; for (let q = 1; q < 6; q++) one.push({ x: a.x + ((b.x - a.x) * q) / 6, y: a.y + ((b.y - a.y) * q) / 6 }); }
+        one.push(...st);
+      }
+      const r = recognizeStrokes([one], { em: 44 });
+      n++;
+      if (r.symbols.length === 1 && r.symbols[0].char === ch) top1++;
+    }
+  }
+  ok(top1 / n >= 0.85, `${top1}/${n} lift-free symbols read`);
+});
+
+test("strokes: a reading that contradicts its place on the line is flagged", () => {
+  const still = { em: 44, rot: 0, shear: 0, aniso: 0, jitter: 0, wobble: 0, drift: 0 };
+  const { strokes, truth } = synthesizeStrokes("2x+3=4", rng(4).next, still);
+  const base = recognizeStrokes(strokes);
+  eq(base.text, "2x+3=4");
+  // push the last glyph's strokes down by half an em: a "4" hanging below the line is not trusted
+  const last = truth[truth.length - 1].strokeIds;
+  const moved = strokes.map((s, i) => (last.includes(i) ? s.map((p) => ({ x: p.x, y: p.y + 0.3 * 44 })) : s));
+  const r = recognizeStrokes(moved);
+  checkContract(r);
+  ok(r.text === "2x+3=4" || r.lowConfidence.length > 0, `unflagged misreading ${r.text}`);
+});
+
 test("strokes: fraction and radical structure is reported in the layout tree", () => {
   const R = rng(5);
   const { strokes } = synthesizeStrokes({ frac: ["a+b", "c"] }, R.next, { em: 40, rot: 0, shear: 0, aniso: 0, jitter: 0, wobble: 0, drift: 0 });
