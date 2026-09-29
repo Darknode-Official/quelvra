@@ -59,4 +59,49 @@ export const CASES = [
   ["new", "if 4 notebooks cost 300 cents, how much do 6 notebooks cost?", 450], ["new", "volume of a cone radius 3 height 4", 12 * PI],
   ["new", "ella is 4 times as old as her daughter. in 20 years she will be twice as old. how old is the daughter now?", 10],
   ["new", "the log of 100 squared", 4], ["new", "square root of 3 squared", 3],
+  ["v2-arith", "what's twelve times eleven", 132], ["v2-arith", "one hundred divided by eight", 12.5], ["v2-arith", "seventeen squared", 289],
+  ["v2-arith", "the square of 13", 169], ["v2-arith", "cube of 4", 64], ["v2-arith", "what is 2 to the power of ten", 1024],
+  ["v2-arith", "difference between 85 and 38", 47], ["v2-arith", "the product of 12 and 15", 180], ["v2-arith", "quotient of 144 and 12", 12],
+  ["v2-arith", "sum of 1 through 100", 5050], ["v2-arith", "add all numbers from 1 to 50", 1275], ["v2-arith", "sum of the first 10 odd numbers", 100],
+  ["v2-arith", "remainder when 100 is divided by 7", 2], ["v2-arith", "100 mod 7", 2], ["v2-arith", "what is half of 3/4", 0.375],
+  ["v2-arith", "average of 4, 8 and 15", 9], ["v2-arith", "whats the mean of 3 7 8", 6], ["v2-arith", "range of 3 9 1 12", 11],
+  ["v2-arith", "mode of 1 2 2 3 3 3", 3], ["v2-arith", "factorial of 6", 720], ["v2-arith", "6 factorial", 720],
+  ["v2-arith", "gcd of 48 and 36", 12], ["v2-arith", "greatest common factor of 24 and 60", 12], ["v2-arith", "lowest common multiple of 4 and 6", 12],
+  ["v2-arith", "round 3.14159 to 2 decimal places", 3.14], ["v2-arith", "round 1234 to the nearest hundred", 1200], ["v2-arith", "absolute value of -17", 17],
+  ["v2-arith", "how many times does 7 go into 56", 8], ["v2-arith", "what number times 6 equals 42", 7], ["v2-arith", "what is 3 less than 20", 17],
+  ["v2-arith", "square root of 144 plus 5", 17], ["v2-arith", "10 percent of 10 percent of 1000", 10], ["v2-money", "what percent of 80 is 20", 25],
+  ["v2-money", "20 is what percent of 80", 25], ["v2-money", "30 is 15% of what number", 200], ["v2-money", "a shirt costs $40 and is 30% off, what is the sale price", 28],
+  ["v2-money", "i paid 45 after a 10% discount, what was the original price", 50], ["v2-money", "simple interest on 1000 at 5% for 3 years", 150], ["v2-money", "compound interest on 1000 at 10% for 2 years", 210],
+  ["v2-money", "how much is 1000 after 2 years at 10% compounded annually", 1210], ["v2-money", "if i save 25 dollars a week how much in a year", 1300], ["v2-money", "price went from 50 to 65, what is the percent increase", 30],
+  ["v2-money", "percent decrease from 80 to 60", 25], ["v2-money", "what is 15 percent tip on 60", 9], ["v2-money", "split 120 dollars among 5 people", 24],
+  ["v2-money", "3 apples cost 1.50, how much do 7 apples cost", 3.5], ["v2-money", "profit if bought for 80 and sold for 100", 20], ["v2-money", "profit percentage if cost price is 80 and selling price is 100", 25],
+  ["v2-alg", "solve 5x - 3 = 17", 4], ["v2-alg", "if 3x = 21 what is x", 7], ["v2-alg", "x/4 = 5", 20],
+  ["v2-alg", "find x if 2x + 3 = x + 10", 7], ["v2-alg", "a number plus 7 equals 19, what is the number", 12], ["v2-alg", "twice a number is 36, find the number", 18],
+  ["v2-alg", "the sum of two consecutive numbers is 41, what is the smaller", 20], ["v2-alg", "slope of the line through (1,2) and (3,8)", 3], ["v2-alg", "distance between (0,0) and (3,4)", 5],
+  ["v2-geo", "area of a circle with radius 3", 28.2743338823081], ["v2-geo", "circumference of a circle with diameter 10", 31.4159265358979], ["v2-geo", "area of a rectangle 5 by 8", 40],
+  ["v2-geo", "perimeter of a square with side 7", 28], ["v2-geo", "area of a triangle with base 10 and height 6", 30], ["v2-geo", "hypotenuse of a right triangle with legs 5 and 12", 13],
+  ["v2-geo", "volume of a cube with side 3", 27], ["v2-geo", "volume of a sphere radius 3", 113.097335529233], ["v2-geo", "area of a square with side 9", 81],
+  ["v2-geo", "how many degrees in a triangle", 180], ["v2-geo", "sum of interior angles of a hexagon", 720], ["v2-geo", "each angle of a regular pentagon", 108],
+  ["v2-geo", "diagonal of a square with side 1", 1.4142135623731], ["v2-geo", "surface area of a cube with side 2", 24], ["v2-geo", "area of a trapezoid with bases 4 and 6 and height 5", 25],
+  ["v2-word", "a car travels 150 miles in 3 hours, what is its speed", 50], ["v2-word", "how long to drive 240 km at 80 km/h", 3], ["v2-word", "how far do you go in 2 hours at 60 mph", 120],
+  ["v2-word", "if 5 workers take 8 days, how many days for 10 workers", 4], ["v2-word", "i have 3 boxes with 12 eggs each, how many eggs", 36], ["v2-word", "john has 5 apples and eats 2, how many are left", 3],
+  ["v2-word", "sarah had 20 dollars and spent 7, how much does she have left", 13], ["v2-word", "there are 24 students and a third are boys, how many boys", 8], ["v2-word", "a pizza has 8 slices, 3 people eat 2 each, how many slices are left", 2],
+  ["v2-word", "if a dozen eggs cost 3 dollars how much is one egg", 0.25], ["v2-word", "how many seconds in an hour", 3600], ["v2-word", "how many minutes in a day", 1440],
+  ["v2-word", "how many hours in a week", 168], ["v2-word", "convert 5 km to miles", 3.10685596118667], ["v2-word", "how many inches in 3 feet", 36],
+  ["v2-word", "what is 100 fahrenheit in celsius", 37.7777777777778], ["v2-word", "ratio 3:5, total 40, what is the larger part", 25], ["v2-calc", "what is the derivative of 3x^2 at x = 2", 12],
+  ["v2-calc", "integral of 2x from 0 to 3", 9], ["v2-calc", "limit of (x^2-1)/(x-1) as x approaches 1", 2], ["v2-calc", "log base 2 of 64", 6],
+  ["v2-calc", "log of 1000", 3], ["v2-calc", "e to the power 0", 1], ["v2-calc", "sin of 30 degrees", 0.5],
+  ["v2-calc", "cos 60 degrees", 0.5], ["v2-calc", "tan of 45 degrees", 1],
+  ["v2-alg", "solve x^2 = 49 for positive x", { re: /x = 7\b/ }], ["v2-word", "tom had 10 marbles and gave 3 to sam, how many does tom have", 7],
+];
+// Phrasings that look everyday but have no single right answer from the words given: Quelvra must refuse them.
+export const TRAPS = [
+  "tom had 10 marbles and gave 3 to sam, how many does sam have", // the story tracks tom, not sam
+  "how many days in a year", // 365 or 366; the units engine's Julian year would say 365.25
+  "there are 25 students and a third are boys, how many boys", // not a whole number of people
+  "profit if bought for 100 and sold for 80", // that is a loss
+  "each angle of a pentagon", // only a regular pentagon has one angle size
+  "a pizza has 8 slices, 5 people eat 2 each, how many slices are left", // more than there is
+  "if 5 workers take 8 days, how many hours for 10 workers", // units disagree
+  "3 apples cost 1.50, how much do 7 pears cost", // a different item
 ];

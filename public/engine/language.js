@@ -361,7 +361,9 @@ const PATTERNS = [
   { id: "what-percent", re: /^(\S+) is what (?:%|percent) of (\S+)$/i,
     build: (m) => ({ math: `p/100 * ${m[2]} = ${m[1]}`, goal: "solve", variable: "p", interpretation: `find p with p% of ${m[2]} = ${m[1]}` }) },
   { id: "percent-change", re: /^(?:what is the )?percent(?:age)? (?:change|increase|decrease) from (\S+) to (\S+)$/i,
-    build: (m) => ({ math: `(${m[2]} - ${m[1]})/${m[1]} * 100`, goal: "evaluate", interpretation: `100 (${m[2]} - ${m[1]})/${m[1]} percent` }) },
+    // a "decrease" is reported as a positive drop: 80 to 60 is a 25% decrease, not -25
+    build: (m) => (/decrease/i.test(m[0]) ? { math: `(${m[1]} - ${m[2]})/${m[1]} * 100`, goal: "evaluate", interpretation: `percent decrease 100 (${m[1]} - ${m[2]})/${m[1]}` }
+      : { math: `(${m[2]} - ${m[1]})/${m[1]} * 100`, goal: "evaluate", interpretation: `100 (${m[2]} - ${m[1]})/${m[1]} percent` }) },
   { id: "gcd", re: /^(?:find |what is |compute |calculate )?(?:the )?(?:gcd|gcf|hcf|greatest common (?:divisor|factor)|highest common factor) of (.+?)(?: and (.+))?$/i,
     build: (m) => ({ math: `gcd(${list(m[1], m[2])})`, goal: "evaluate", interpretation: `greatest common divisor of ${list(m[1], m[2])}` }) },
   { id: "lcm", re: /^(?:find |what is |compute |calculate )?(?:the )?(?:lcm|least common multiple|lowest common multiple) of (.+?)(?: and (.+))?$/i,
@@ -556,11 +558,24 @@ function notation(s) {
   return s;
 }
 
+// "if a dozen eggs cost 3 dollars how much is one egg" -> "a dozen eggs cost 3 dollars. how much is one egg";
+// null when there is nothing to split
+const Q_WORD = String.raw`(?:how (?:many|much|long|far|old|often)|what (?:is|was|are|were|will|would|does|do)|find|determine|calculate|work out)`;
+function runOn(t) {
+  let s = t.replace(new RegExp(String.raw`\s*,\s*(?=${Q_WORD}\b)`, "gi"), ". ");
+  s = s.replace(new RegExp(String.raw`(\d(?:\.\d+)?%?(?: [a-z]+){0,3}) (?=${Q_WORD}\b)`, "i"), "$1. ");
+  // "john has 5 apples and eats 2" -> "john has 5 apples. john eats 2"
+  s = s.replace(/^(?:if )?([a-z]+) (has|had|have|bought|buys|got|gets|made|makes|earned|earns|picked|collected|saved) ([^.,]+?) and (?:then )?(ate|eats|spent|spends|gave away|gives away|gave|gives|lost|loses|sold|sells|used|uses|bought|buys|found|finds|got|gets|received|receives|picked|earned|earns|ate up|broke|breaks|dropped|drops) /i,
+    (m, who, v1, what, v2) => `${who} ${v1} ${what}. ${who} ${v2} `);
+  s = s.replace(/^(?:if|suppose|given that) (?=[^.]+\. )/i, "");
+  return s !== t && /\. /.test(s) ? s : null;
+}
+
 // Main entry.
 // advanced discrete commands (engine/discrete/lang.js): graphs, logic, sets, permutations, finite
 // fields, LP, games, cryptography, homology and proof requests become canonical call forms
 import { translateAdvancedDiscrete } from "./discrete/lang.js";
-export function translate(input) {
+export function translate(input, retry = true) {
   const advDiscrete = translateAdvancedDiscrete(String(input || ""));
   if (advDiscrete) return advDiscrete;
   let raw = clean(notation(String(input || "").replace(/\s+/g, " ")));
@@ -575,7 +590,7 @@ export function translate(input) {
   let lower = raw;
   for (let k = 0; k < 4; k++) { const t = lower.replace(PREFIX, "").replace(SUFFIX, ""); if (t === lower) break; lower = clean(t); }
   if (!lower) return { ok: false, reason: "empty input" };
-  lower = clean(lower.replace(TAIL, ""));
+  lower = clean(lower.replace(TAIL, "").replace(/^(?:what's|whats|wats|wat is)\s+/i, "what is "));
   if (lower !== raw && looksLikeMath(lower)) return { ok: true, math: lower, goal: null, interpretation: lower, pattern: "math-polite", confidence: 0.95, notes: [] };
   let firstFail = null;
   for (const p of PATTERNS) {
@@ -593,6 +608,12 @@ export function translate(input) {
     const notes = [...(r.notes || [])];
     logNote(r.math, lower, notes);
     return { ok: true, confidence: pattern === "evaluate" || pattern === "solve" ? 0.9 : 0.95, ...r, pattern, notes };
+  }
+  // a run-on word problem ("john has 5 apples and eats 2, how many are left") read as separate sentences;
+  // the word-problem templates still have to understand every sentence
+  if (retry) {
+    const split = runOn(lower);
+    if (split) { const r = translate(split, false); if (r.ok && r.pattern !== "phrases") return { ...r, notes: [...(r.notes || []), `Read as: "${split}"`] }; }
   }
   if (firstFail) return firstFail;
   // last resort: word-to-symbol translation only if the result is pure math

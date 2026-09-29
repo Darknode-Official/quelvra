@@ -2231,6 +2231,11 @@ function arithmeticStory(sents, text) {
   let sm = startRe.exec(body);
   if (sm) { base = +sm[1]; baseIdx = sm.index + sm[0].lastIndexOf(sm[1]); }
   if (base === null) return null;
+  // the running total is the subject's; a question about someone else ("tom gave 3 to sam. how many does sam have") is not this model
+  const PRON = /^(?:he|she|they|i|we|you|it|him|her|them|there)$/;
+  const subj = /\b([a-z]+) (?:has|had|have|owns?|owned|starts?|started|begins?|began)\b/.exec(body);
+  const asked = /\b(?:does|do|did|will|would|is|was) ([a-z]+) (?:have|has|own|get|keep|end up|now have|still have|left with|have left)\b/.exec(sents[qi]);
+  if (asked && !PRON.test(asked[1]) && (!subj || subj[1] !== asked[1])) return null;
   // events: a verb followed (within a short window) by a number, or "N more/fewer/less"
   const evRe = /\b(buys?|bought|gets?|got|gains?|gained|finds?|found|receives?|received|adds?|added|picks up|picked up|is given|was given|earns?|earned|collects?|collected|catches?|caught|wins?|won|plants?|planted|bakes?|baked|loses?|lost|gives? away|gave away|gives?|gave|eats?|ate|sells?|sold|spends?|spent|uses?|used|drops?|dropped|throws? away|threw away|removes?|removed|breaks?|broke|donates?|donated)\s+(\d+(?:\.\d+)?)/g;
   const takenIdx = new Set([baseIdx]);

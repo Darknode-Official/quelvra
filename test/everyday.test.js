@@ -2,7 +2,7 @@
 import { test, eq } from "./harness.js";
 import { solve } from "../public/engine/quelvra.js";
 import { judge, textOf } from "../tools/coverage-judge.mjs";
-import { CASES } from "../tools/everyday-cases.mjs";
+import { CASES, TRAPS } from "../tools/everyday-cases.mjs";
 
 test("everyday phrasings: all answered, verified and correct", () => {
   const bad = [];
@@ -11,5 +11,10 @@ test("everyday phrasings: all answered, verified and correct", () => {
     try { r = solve(input, { timeLimit: 5000 }); v = judge(exp, r); } catch (e) { v = "crash " + e.message; r = { answers: [] }; }
     if (v !== "ok") bad.push(`[${area}] ${input} -> ${v}: ${(r.answers || []).map(textOf).join("; ")}`);
   }
+  eq(bad.length, 0, bad.join("\n"));
+});
+
+test("everyday traps: refused, never answered", () => {
+  const bad = TRAPS.filter((q) => { const r = solve(q, { timeLimit: 5000 }); return r.ok && (r.answers || []).length; });
   eq(bad.length, 0, bad.join("\n"));
 });

@@ -37,6 +37,18 @@ setApproxHook((tree, digits) => {
   } catch (_) { return null; }
 });
 
+// everyday unit questions as a plain conversion, used only to try the units engine:
+// "how many seconds in an hour" -> "1 hour to seconds", "what is 100 fahrenheit in celsius" -> "100 fahrenheit in celsius"
+function unitQuestion(text) {
+  const t = text.trim().replace(/[?!.]+$/, "").trim();
+  let m = /^how many ([a-z°][a-z° ]*?) (?:are )?(?:there )?in (?:a|an|one|(\d+(?:\.\d+)?)) ([a-z°][a-z°/ ]*?)$/i.exec(t);
+  // a calendar year or month is not a fixed number of days, so "how many days in a year" is left alone (365.25 would mislead)
+  if (m) return /\b(?:years?|yrs?|months?|decades?|centur(?:y|ies))\b/i.test(m[1] + " " + m[3]) ? text : `${m[2] || 1} ${m[3]} to ${m[1]}`;
+  m = /^(-?\d+(?:\.\d+)?) ?([a-z°][a-z°/ ]*?) (?:is|are|equals|makes) how many ([a-z°][a-z° ]*)$/i.exec(t);
+  if (m) return `${m[1]} ${m[2]} to ${m[3]}`;
+  return t.replace(/^(?:what is|what's|whats|how much is|how many is)\s+(?=-?\d)/i, "");
+}
+
 export function solve(input, options = {}) {
   const progress = typeof options.onProgress === "function" ? options.onProgress : () => {};
   progress("reading");
@@ -44,7 +56,8 @@ export function solve(input, options = {}) {
   const text = typeof input === "string" ? input.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).join("; ") : input;
   // unit conversion requests go straight to the units engine ("5 km/h to m/s")
   if (typeof text === "string") {
-    const ut = /^(?:convert\s+)?-?[\d.]+\s*[a-z°]/i.test(text) ? U.normalizeUnitWords(text) : text;
+    const ut0 = unitQuestion(text);
+    const ut = /^(?:convert\s+)?-?[\d.]+\s*[a-z°]/i.test(ut0) ? U.normalizeUnitWords(ut0) : ut0;
     const m = ut.match(/^(?:convert\s+)?(-?[\d.]+(?:\s*[a-zA-Z°][\w°/^*·.]*)+)\s+(?:to|in|into)\s+([a-zA-Z°][\w°/^*·.]*)$/i);
     if (m) {
       try {
