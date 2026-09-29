@@ -94,6 +94,13 @@ function everydayPatterns({ E, out, WN }) {
         return out(k === "decrease" ? `(${m[1]} - ${m[2]})/${m[1]}*100` : `(${m[2]} - ${m[1]})/${m[1]}*100`, `percent ${k} from ${m[1]} to ${m[2]}`, { notes: ["The answer is in percent."] }); } },
     { id: "percent-chain", re: new RegExp(String.raw`^(?:an? |the )?(?:price|value|number|salary|amount|cost|population|wage) (?:of )?${WNUM} (?:is )?(increased|decreased|raised|reduced|cut|lowered) by ${WNUM} ?(?:%|percent)(?:,)? and then (increased|decreased|raised|reduced|cut|lowered) by ${WNUM} ?(?:%|percent)(?:[,.]? what is the (?:new|final|resulting) (?:price|value|number|amount|cost))?$`, "i"),
       build: (m) => { const f = (w, p) => `(1 ${/increased|raised/i.test(w) ? "+" : "-"} ${p}/100)`; return out(`${m[1]}*${f(m[2], m[3])}*${f(m[4], m[5])}`, `${m[1]} x ${f(m[2], m[3])} x ${f(m[4], m[5])}: each change applies to the new value`); } },
+    // discount / sale price: "X% off Y", "Y with X% off", "sale price of $Y with X% discount"
+    { id: "percent-off", re: new RegExp(String.raw`^(?:what is |what's |find |calculate )?(?:the )?(?:sale |discounted |final )?price of \$?${WNUM} (?:with |at |after )?${WNUM} ?(?:%|percent) (?:off|discount)$`, "i"),
+      build: (m) => out(`${m[1]}*(1 - ${m[2]}/100)`, `${m[2]}% off ${m[1]}: ${m[1]} x (1 - ${m[2]}/100)`) },
+    { id: "percent-off", re: new RegExp(String.raw`^\$?${WNUM} (?:with |at |minus )${WNUM} ?(?:%|percent) (?:off|discount)$`, "i"),
+      build: (m) => out(`${m[1]}*(1 - ${m[2]}/100)`, `${m[2]}% off ${m[1]}: ${m[1]} x (1 - ${m[2]}/100)`) },
+    { id: "percent-off", re: new RegExp(String.raw`^(?:what is |what's )?${WNUM} ?(?:%|percent) (?:off|discount(?:ed)?(?: (?:from|on|off))?) \$?${WNUM}$`, "i"),
+      build: (m) => out(`${m[2]}*(1 - ${m[1]}/100)`, `${m[1]}% off ${m[2]}: ${m[2]} x (1 - ${m[1]}/100)`) },
     // "what number added to 15 gives 42"
     { id: "what-number", re: new RegExp(String.raw`^what number (added to|plus|subtracted from|multiplied by|times|divided by) ${WNUM} (?:gives|makes|equals|is|results in) ${WNUM}$`, "i"),
       build: (m) => { const op = m[1].toLowerCase(), eq = /added|plus/.test(op) ? `x + ${m[2]} = ${m[3]}` : /subtracted/.test(op) ? `${m[2]} - x = ${m[3]}` : /multiplied|times/.test(op) ? `${m[2]}*x = ${m[3]}` : `x/${m[2]} = ${m[3]}`;

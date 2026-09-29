@@ -380,9 +380,9 @@ const PATTERNS = [
     build: (m) => ({ math: `divisors(${m[1]})`, goal: "evaluate", interpretation: `divisors of ${m[1]}` }) },
   { id: "remainder", re: /^(?:find |what is )?(?:the )?remainder (?:when|of) (.+?) (?:is )?divided by (.+)$/i,
     build: (m) => { const a = mathOf(m[1]), b = mathOf(m[2]); return a && b ? { math: `(${a}) mod (${b})`, goal: "evaluate", interpretation: `remainder of ${a} divided by ${b}` } : null; } },
-  { id: "mean", re: /^(?:find |what is )?(?:the )?(mean|average|median|mode|variance|standard deviation) of (.+)$/i,
-    build: (m) => { const f = { mean: "mean", average: "mean", median: "median", mode: "mode", variance: "variance", "standard deviation": "stdev" }[m[1].toLowerCase()];
-      return { math: `${f}(${list(m[2])})`, goal: "evaluate", interpretation: `${m[1].toLowerCase()} of ${list(m[2])}` }; } },
+  { id: "mean", re: /^(?:find |what is )?(?:the )?(mean|average|median|mode|variance|standard deviation|std ?dev(?:iation)?|stdev|std) of (.+)$/i,
+    build: (m) => { const k = m[1].toLowerCase(); const f = /^(?:std|stdev|standard)/.test(k) || /deviation/.test(k) ? "stdev" : { mean: "mean", average: "mean", median: "median", mode: "mode", variance: "variance" }[k];
+      return { math: `${f}(${list(m[2])})`, goal: "evaluate", interpretation: `${f === "stdev" ? "standard deviation" : k} of ${list(m[2])}` }; } },
 
   // ---- classic word problems (templates with explicit unknowns) ----
   { id: "number-plus", re: /^(?:a|some|the) number (?:plus|increased by|added to) (\S+) is (\S+)$/i,

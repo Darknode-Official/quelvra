@@ -5,6 +5,8 @@ export const CASES = [
   ["arith", "whats 15 percent of 80", 12], ["arith", "what is 3/4 plus 2/3", 17 / 12], ["arith", "how much is 7 times 8", 56],
   ["arith", "percent change from 50 to 75", 50], ["arith", "what percent of 80 is 20", 25], ["arith", "20 is what percent of 80", 25],
   ["arith", "increase 80 by 15%", 92], ["arith", "decrease 80 by 15 percent", 68], ["arith", "convert 0.75 to a fraction", { re: /3\/4|3 \/ 4/ }],
+  ["arith", "20% off 80", 64], ["arith", "sale price of 80 with 20% off", 64], ["arith", "$80 with 25% discount", 60],
+  ["arith", "std dev of 2,4,6", { re: /sqrt\(6\).*3|standard deviation/ }],
   ["arith", "write 5/8 as a decimal", 0.625], ["arith", "3/8 as a percent", 37.5], ["arith", "simplify 18/24", { re: /3\/4|3 \/ 4/ }],
   ["arith", "what's the square root of 50", Math.sqrt(50)], ["arith", "simplify sqrt(50)", { re: /5.*sqrt\(2\)|5√2/ }], ["arith", "cube root of 64", 4],
   ["arith", "what is 2 to the power of 10", 1024], ["arith", "log base 2 of 8", 3], ["arith", "natural log of e squared", 2],
