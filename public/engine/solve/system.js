@@ -35,6 +35,8 @@ export function systemTarget(node, card, env) {
   let unknowns = vars.length ? vars : (env.options && env.options.variables) || (card && card.unknowns && card.unknowns.length ? card.unknowns : null);
   if (!unknowns) unknowns = syms.slice().sort();
   unknowns = unknowns.filter((u) => syms.includes(u));
+  // "solve 2x + y = 7 and x - y = 2 for x": as many equations as symbols means every symbol is an unknown
+  if (unknowns.length < syms.length && eqs.length >= syms.length) unknowns = syms.slice().sort();
   if (!unknowns.length) return null;
   const params = syms.filter((s) => !unknowns.includes(s));
   return { eqs, unknowns, params, original: X.system(...eqs) };

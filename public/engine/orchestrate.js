@@ -82,7 +82,8 @@ function recognise(input, options) {
   }
   const words = unknownWords(src);
   // an English stop word ("of", "is", "the") would only parse as a product of letters: never math
-  const STOP = /^(of|is|as|by|if|an|the|to|for|in|with|from|over|where|when|find|what|then|that|than|are|was)$/i;
+  // ...and neither is a common English verb or word of three letters ("add 1/2 and 1/3" is not a*d^2/2)
+  const STOP = /^(of|is|as|by|if|an|the|to|for|in|with|from|over|where|when|find|what|then|that|than|are|was|add|sum|get|put|let|how|why|who|can|use|say|see|try|one|two|six|ten|all|any|out|off|way|big|new|old|per|via|has|had|did|does|will|its|our|you|she|his|her|and|not|but|nor|yet|own|too|few|now|day|job|buy|pay|cut|eat|ate|run|ran|got|set|put|lot|top|low|end|sub|mul|div|avg)$/i;
   if (words.length >= 2 || words.some((w) => w.length >= 4 || STOP.test(w))) {
     const e = new Error(`Quelvra does not understand "${words[0]}". ${t.reason || ""}`.trim());
     e.pos = src.indexOf(words[0]); e.hint = "Write the math with symbols (2x + 3 = 11), or use one of the supported phrasings such as \"derivative of x^3\" or \"solve x^2 = 4\". Products of letters need a * or spaces: a*b*c.";

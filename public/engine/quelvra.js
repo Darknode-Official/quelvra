@@ -46,6 +46,9 @@ function unitQuestion(text) {
   if (m) return /\b(?:years?|yrs?|months?|decades?|centur(?:y|ies))\b/i.test(m[1] + " " + m[3]) ? text : `${m[2] || 1} ${m[3]} to ${m[1]}`;
   m = /^(-?\d+(?:\.\d+)?) ?([a-z°][a-z°/ ]*?) (?:is|are|equals|makes) how many ([a-z°][a-z° ]*)$/i.exec(t);
   if (m) return `${m[1]} ${m[2]} to ${m[3]}`;
+  // "how many minutes is 2.5 hours"
+  m = /^how many ([a-z°][a-z° ]*?) (?:is|are|in|make|makes|equals?) (-?\d+(?:\.\d+)?) ?([a-z°][a-z°/ ]*?)$/i.exec(t);
+  if (m) return `${m[2]} ${m[3]} to ${m[1]}`;
   return t.replace(/^(?:what is|what's|whats|how much is|how many is)\s+(?=-?\d)/i, "");
 }
 

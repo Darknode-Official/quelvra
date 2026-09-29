@@ -276,6 +276,9 @@ function lex(s, notes = []) {
     const c = s[i];
     const start = i;
     if (/\s/.test(c)) { i++; continue; }
+    // base-prefixed integers: 0b101101, 0o17, 0xff (never 0 times a symbol)
+    const bp = c === "0" && s.slice(i).match(/^0(?:[bB][01]+|[oO][0-7]+|[xX][0-9a-fA-F]+)(?![A-Za-z0-9_])/);
+    if (bp) { i += bp[0].length; push("num", BigInt(bp[0].replace(/^0[oO]/, "0o").toLowerCase()).toString(), start); continue; }
     if (/[0-9]/.test(c) || (c === "." && /[0-9]/.test(s[i + 1] || ""))) {
       let m = s.slice(i).match(/^(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/);
       // "2e" followed by non-digit is 2*e, not scientific

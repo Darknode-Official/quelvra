@@ -109,7 +109,11 @@ const PHRASES = [
   [/\b(?:the )?difference (?:between|of) (\S+) and (\S+)/g, "(($1) - ($2))"], [/\b(?:the )?quotient of (\S+) and (\S+)/g, "(($1)/($2))"],
 ];
 function phrases(s) {
-  let t = powerWords(s);
+  let t = s.replace(/\b(\d+) and (?:a|one) half\b/g, "($1 + 1/2)").replace(/\b(\d+) and (?:a|one) quarter\b/g, "($1 + 1/4)").replace(/\b(\d+) and three quarters\b/g, "($1 + 3/4)")
+    .replace(/\bto the (?:power of )?(?:a |one )?half\b(?! of\b)/g, "^(1/2)");
+  t = powerWords(t);
+  // "1/2 divided by 1/4": a fraction next to a word operator is one number, (1/2) / (1/4), not 1/2/1/4
+  if (/\b(?:divided by|over|times|multiplied by)\b/.test(t)) t = t.replace(/(?<![\w.)^/])(\d+(?:\.\d+)?\/\d+(?:\.\d+)?)(?![\w.(^/])/g, "($1)");
   for (const [re, rep] of PHRASES) t = t.replace(re, rep);
   // "ln of e squared" / "square root of x squared": "of" takes the whole powered word, ln(e^2) not ln(e)^2
   t = t.replace(/\b(sqrt|cbrt|ln|log(?:_[^\s(]+)?|abs)\s+(\([^()]+\)\^\([^()]+\))/g, "$1($2)");

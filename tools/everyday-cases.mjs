@@ -93,6 +93,51 @@ export const CASES = [
   ["v2-calc", "log of 1000", 3], ["v2-calc", "e to the power 0", 1], ["v2-calc", "sin of 30 degrees", 0.5],
   ["v2-calc", "cos 60 degrees", 0.5], ["v2-calc", "tan of 45 degrees", 1],
   ["v2-alg", "solve x^2 = 49 for positive x", { re: /x = 7\b/ }], ["v2-word", "tom had 10 marbles and gave 3 to sam, how many does tom have", 7],
+  // round 3: everyday verbs, percent word forms, number facts, sequences, series, limits
+  ["v3-frac", "add 1/2 and 1/3", 0.833333333333333], ["v3-frac", "what is 2/3 of 3/4", 0.5], ["v3-frac", "1/2 divided by 1/4", 2],
+  ["v3-frac", "subtract 1/4 from 3/4", 0.5], ["v3-frac", "0.125 as a fraction", 0.125], ["v3-frac", "what is 1.5 times 4", 6],
+  ["v3-frac", "what is 3 and a half times 2", 7], ["v3-frac", "simplify 12/16", 0.75], ["v3-pct", "what is 25% of 25% of 400", 25],
+  ["v3-pct", "40 is 20 percent of what", 200], ["v3-pct", "15 out of 20 as a percent", 75], ["v3-pct", "what percentage is 45 out of 60", 75],
+  ["v3-pct", "i scored 18 out of 25, what percent is that", 72], ["v3-pct", "a population grows from 200 to 250, what is the percentage increase", 25], ["v3-pct", "a price of 80 is increased by 10% and then decreased by 10%", 79.2],
+  ["v3-pct", "what is 150% of 60", 90], ["v3-pct", "0.5% of 2000", 10], ["v3-alg", "solve for x: 4(x - 2) = 12", 5],
+  ["v3-alg", "3x + 2 = 2x + 9", 7], ["v3-alg", "if 2x - 7 = 11 find x", 9], ["v3-alg", "x + x + x = 27", 9],
+  ["v3-alg", "what number added to 15 gives 42", 27], ["v3-alg", "a number divided by 4 is 9, what is the number", 36], ["v3-alg", "three times a number minus 5 is 16", 7],
+  ["v3-alg", "the sum of three consecutive integers is 72, find the largest", 25], ["v3-alg", "solve 2x + y = 7 and x - y = 2 for x", 3], ["v3-alg", "if y = 3x + 2 and x = 4, what is y", 14],
+  ["v3-exp", "what is 2 cubed times 3 squared", 72], ["v3-exp", "10 to the 6th", 1000000], ["v3-exp", "square root of 2 times square root of 8", 4],
+  ["v3-exp", "4 to the half", 2], ["v3-exp", "what is 8 to the power of 1/3", 2], ["v3-exp", "5 squared minus 3 squared", 16],
+  ["v3-exp", "how many zeros in a million", 6], ["v3-seq", "next number in the sequence 3 6 9 12", 15], ["v3-seq", "10th term of 2, 5, 8, 11", 29],
+  ["v3-seq", "sum of the first 20 even numbers", 420], ["v3-seq", "what is the 5th term of a geometric sequence with first term 3 and ratio 2", 48], ["v3-geo", "area of a circle with diameter 10", 78.5398163397448],
+  ["v3-geo", "radius of a circle with area 50", 3.98942280401433], ["v3-geo", "perimeter of a rectangle 7 by 3", 20], ["v3-geo", "area of an equilateral triangle with side 6", 15.5884572681199],
+  ["v3-geo", "volume of a box 2 by 3 by 4", 24], ["v3-geo", "a square has area 64, what is its side", 8], ["v3-geo", "a circle has circumference 31.4, find its radius", 4.99746521308551],
+  ["v3-geo", "third angle of a triangle with angles 50 and 60", 70], ["v3-geo", "complement of 35 degrees", 55], ["v3-geo", "supplement of 110 degrees", 70],
+  ["v3-geo", "how many sides does a hexagon have", 6], ["v3-geo", "area of a semicircle with radius 4", 25.1327412287183], ["v3-stat", "average of 85, 90 and 95", 90],
+  ["v3-stat", "what score do i need on the 4th test to average 80 if i got 70 75 and 85", 90], ["v3-stat", "mean of the first 10 natural numbers", 5.5], ["v3-stat", "median of 7, 1, 3, 9", 5],
+  ["v3-stat", "range of the numbers 12 5 20 8", 15], ["v3-rate", "if i walk at 5 km/h how long to walk 12 km", 2.4], ["v3-rate", "a car uses 8 liters per 100 km, how many liters for 350 km", 28],
+  ["v3-rate", "it takes 3 hours to paint 2 rooms, how long for 5 rooms", 7.5], ["v3-rate", "a tap fills 10 liters per minute, how long to fill 250 liters", 25], ["v3-rate", "how many minutes is 2.5 hours", 150],
+  ["v3-rate", "how many hours is 150 minutes", 2.5], ["v3-rate", "earning 15 dollars an hour, how much for 40 hours", 600], ["v3-rate", "a recipe for 4 people needs 300 g of flour, how much for 6 people", 450],
+  ["v3-num", "how many factors does 36 have", 9], ["v3-num", "smallest prime greater than 50", 53], ["v3-num", "sum of digits of 4567", 22],
+  ["v3-num", "how many digits in 2^20", 7], ["v3-num", "10 factorial divided by 8 factorial", 90], ["v3-num", "roman numeral XIV", 14],
+  ["v3a-calc", "derivative of ln(x) at x = 2", 0.5], ["v3a-calc", "integrate x^2 from 0 to 3", 9], ["v3a-calc", "integral of 1/x from 1 to e", 1],
+  ["v3a-calc", "area under y = x^2 from 0 to 2", 2.66666666666667], ["v3a-calc", "limit of sin(x)/x as x goes to 0", 1], ["v3a-calc", "lim x->infinity of (1 + 1/x)^x", 2.71828182845905],
+  ["v3a-calc", "find the maximum of -x^2 + 4x + 1", 5], ["v3a-calc", "minimum value of x^2 - 6x + 10", 1], ["v3a-calc", "slope of the tangent to y = x^3 at x = 2", 12],
+  ["v3a-calc", "sum of 1/n^2 from 1 to infinity", 1.64493406684823], ["v3a-alg", "solve x^2 + 2x - 15 = 0", {"roots":[-5,3]}], ["v3a-alg", "roots of 2x^2 - 8", {"roots":[-2,2]}],
+  ["v3a-alg", "solve |x - 3| = 5", {"roots":[-2,8]}], ["v3a-alg", "solve 2^x = 32", 5], ["v3a-alg", "solve log(x) = 2", 100],
+  ["v3a-alg", "solve x^3 = 27", 3], ["v3a-alg", "discriminant of x^2 + 4x + 5", -4], ["v3a-trig", "sin 45 degrees", 0.707106781186548],
+  ["v3a-trig", "cos(pi/3)", 0.5], ["v3a-trig", "arcsin(1/2) in degrees", 30], ["v3a-trig", "convert 180 degrees to radians", 3.14159265358979],
+  ["v3a-trig", "convert pi/4 radians to degrees", 45], ["v3a-trig", "tan 60 degrees", 1.73205080756888], ["v3a-trig", "sec(0)", 1],
+  ["v3a-log", "ln e^3", 3], ["v3a-log", "log base 3 of 81", 4], ["v3a-log", "log 2 + log 5", 1],
+  ["v3a-log", "solve e^x = 10", 2.30258509299405], ["v3a-log", "how long to double money at 5% interest compounded annually", 14.2066990828905], ["v3a-cx", "modulus of 3 + 4i", 5],
+  ["v3a-cx", "i^2", -1], ["v3a-la", "determinant of [[1,2],[3,4]]", -2], ["v3a-la", "dot product of (1,2,3) and (4,5,6)", 32],
+  ["v3a-la", "magnitude of the vector (3, 4)", 5], ["v3a-comb", "how many ways can 5 people sit in a row", 120], ["v3a-comb", "8 choose 3", 56],
+  ["v3a-comb", "number of permutations of 5 taken 2", 20], ["v3a-comb", "how many subsets does a set of 4 elements have", 16], ["v3a-comb", "how many arrangements of the letters in APPLE", 60],
+  ["v3a-comb", "probability of rolling a sum of 7 with two dice", 0.166666666666667], ["v3a-comb", "probability of drawing an ace from a deck", 0.0769230769230769], ["v3a-comb", "expected value of a fair die", 3.5],
+  ["v3a-comb", "how many handshakes among 10 people", 45], ["v3a-nt", "gcd(84, 126)", 42], ["v3a-nt", "17 mod 5", 2],
+  ["v3a-nt", "3^100 mod 7", 4], ["v3a-nt", "last digit of 7^100", 1], ["v3a-nt", "number of divisors of 100", 9],
+  ["v3a-nt", "sum of divisors of 12", 28], ["v3a-nt", "euler totient of 36", 12], ["v3a-nt", "binary 101101 to decimal", 45],
+  ["v3a-st", "z score of 85 with mean 70 and standard deviation 10", 1.5], ["v3a-st", "probability that z is less than 1.96", 0.97500210485178], ["v3a-ser", "sum of the arithmetic series 2 + 5 + 8 + ... + 32", 187],
+  ["v3a-ser", "sum of 1 + 2 + 4 + ... + 512", 1023], ["v3a-ser", "20th term of the arithmetic sequence 5, 9, 13", 81], ["v3a-ser", "sum from k = 1 to 10 of k^2", 385],
+  ["v3-fix", "0b101101", 45], ["v3-fix", "0xff + 1", 256], ["v3-fix", "solve 2x + y = 7 and x - y = 2 for x", { re: /x = 3, y = 1/ }],
+  ["v3-fix", "sum of 1/2^n from 0 to infinity", 2], ["v3-fix", "is 145 a perfect square", { re: /false/ }], ["v3-fix", "roman numeral MCMXCIV", 1994],
 ];
 // Phrasings that look everyday but have no single right answer from the words given: Quelvra must refuse them.
 export const TRAPS = [
@@ -104,4 +149,14 @@ export const TRAPS = [
   "a pizza has 8 slices, 5 people eat 2 each, how many slices are left", // more than there is
   "if 5 workers take 8 days, how many hours for 10 workers", // units disagree
   "3 apples cost 1.50, how much do 7 pears cost", // a different item
+  "add x and 3", // "add" is a verb, not a*d*d
+  "mean of the first 0 natural numbers", // there are none
+  "what is the 0th term of a geometric sequence with first term 3 and ratio 2", // terms start at 1
+  "2 to the half of 8", // "to the half" is a power only when nothing follows
+  "i scored 30 out of 25, what percent is that", // more than the total
+  "a population grows from 250 to 200, what is the percentage increase", // that is a decrease
+  "third angle of a triangle with angles 100 and 90", // no such triangle
+  "complement of 95 degrees", // only angles below 90 have one
+  "permutations of 3 taken 5", // cannot take more than there are
+  "roman numeral IIII", // not a valid numeral
 ];
