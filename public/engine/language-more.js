@@ -61,7 +61,68 @@ function repeatingDecimal(s) {
 export function morePatterns({ expr, mathOf, LEAD, re }) {
   const E = (s) => mathOf(s) || null;
   const out = (math, interpretation, extra = {}) => (math ? { math, interpretation, ...extra } : null);
+  // substitute a value for one variable in math text: 3x^2 + 2 at x = 4 -> 3(4)^2 + 2 (a letter inside a
+  // function name such as the x of exp is left alone)
+  const subst = (body, v, val) => body.replace(new RegExp(`(?<![A-Za-z_])${v}(?![A-Za-z_(])`, "g"), `(${val})`);
+  // exact rational of a simple term ("1", "1/2", "0.25", "-3/4") as [numerator, denominator] BigInts
+  const ratOf = (s) => { const m = /^\s*(-?\d+)(?:\.(\d+))?(?:\s*\/\s*(\d+))?\s*$/.exec(s); if (!m) return null;
+    let n = BigInt(m[1] + (m[2] || "")), d = 10n ** BigInt((m[2] || "").length) * BigInt(m[3] || 1); return d === 0n ? null : [n, d]; };
+  const DIE = { even: [2, 4, 6], odd: [1, 3, 5], prime: [2, 3, 5] };
   return [
+    // ---- everyday phrasings (plain percent changes, fraction forms, "evaluate ... when x = 4") ----
+    { id: "percent-change-by", re: /^(?:what is |find |calculate )?(increase|raise|decrease|reduce|lower|cut|discount) \$?(\S+?) by (\S+?) ?(?:%|percent|per cent)$/i,
+      build: (m) => { const x = E(m[2]), p = E(m[3]); if (!x || !p) return null; const up = /^(increase|raise)$/i.test(m[1]);
+        return out(`${x}*(1 ${up ? "+" : "-"} ${p}/100)`, `${x} ${up ? "increased" : "decreased"} by ${p}%: ${x} x (1 ${up ? "+" : "-"} ${p}/100)`); } },
+    { id: "percent-more-than", re: /^(?:what is |find )?(\S+?) ?(?:%|percent) (more|less|greater|smaller|higher|lower) than \$?(\S+)$/i,
+      build: (m) => { const p = E(m[1]), x = E(m[3]); if (!x || !p) return null; const up = /more|greater|higher/i.test(m[2]);
+        return out(`${x}*(1 ${up ? "+" : "-"} ${p}/100)`, `${p}% ${up ? "more" : "less"} than ${x}: ${x} x (1 ${up ? "+" : "-"} ${p}/100)`); } },
+    { id: "as-decimal", re: /^(?:write |convert |express |change |turn |what is )?(.+?) (?:as|to|into|in) (?:a )?decimal(?: form| number)?$/i,
+      build: (m) => { if (/\b(?:binary|hex|octal|base|ternary)\b|0[xbo]|_\d|^[0-9a-f]*[a-f][0-9a-f]*$/i.test(m[1].trim())) return null; const x = E(m[1]); return x ? out(x, `${x} as a decimal`, { notes: ["The decimal value is shown next to the exact one."] }) : null; } },
+    { id: "as-percent", re: /^(?:write |convert |express |change |turn |what is )?(.+?) (?:as|to|into|in) (?:a )?percent(?:age)?$/i,
+      build: (m) => { const x = E(m[1]); return x ? out(`(${x})*100`, `${x} as a percent: ${x} x 100`, { notes: ["The answer is in percent."] }) : null; } },
+    { id: "reciprocal", re: /^(?:what is |find )?(?:the )?(?:reciprocal|multiplicative inverse) of (.+)$/i,
+      build: (m) => { const x = E(m[1]); return x ? out(`1/(${x})`, `reciprocal of ${x}: 1/(${x})`) : null; } },
+    { id: "fib-nth", re: /^(?:what is |find |give me )?(?:the )?(\d+)(?:st|nd|rd|th)? fibonacci(?: number| term)?$/i,
+      build: (m) => +m[1] <= 5000 ? out(`fibonacci(${m[1]})`, `Fibonacci number F(${m[1]}), with F(1) = F(2) = 1`) : null },
+    { id: "eval-at", re: /^(?:evaluate|find|compute|calculate|what is|what's|work out)? ?(?:the value of )?(.+?),? (?:when|at|for|if|where|given) ([a-z]) ?= ?(-?[\d./]+)$/i,
+      build: (m) => { const body = E(m[1]); if (!body || /[=<>]/.test(body) || !new RegExp(`(?<![A-Za-z_])${m[2]}(?![A-Za-z_(])`).test(body)) return null;
+        return out(subst(body, m[2], m[3]), `${body} with ${m[2]} = ${m[3]}`); } },
+    { id: "fn-value", re: /^(?:if |given |given that |let |suppose )?([a-z])\(([a-z])\) ?= ?(.+?)[,.;:]? (?:then )?(?:find|what is|what's|evaluate|compute|calculate|and) \1\((-?[\d./]+)\)$/i,
+      build: (m) => { const body = E(m[3]); if (!body || /[=<>]/.test(body)) return null; return out(subst(body, m[2], m[4]), `${m[1]}(${m[4]}) for ${m[1]}(${m[2]}) = ${body}`); } },
+    { id: "solve-trailing", re: /^(.+?[=<>].*?)[,.;:]? (?:find|solve for|what is|what's|determine) ([a-z])$/i,
+      build: (m) => { const t = expr(m[1]); if (!/[=<>]/.test(t) || !new RegExp(`(?<![A-Za-z_])${m[2]}(?![A-Za-z_(])`).test(t)) return null; return { math: t, goal: "solve", variable: m[2], interpretation: `solve ${t} for ${m[2]}` }; } },
+    { id: "geo-series-sum", re: /^(?:(?:find |what is |compute |calculate )?(?:the )?sum of (?:the )?(?:infinite )?(?:geometric )?(?:series|sequence)?:? ?)?(.+?)\s*\+\s*(?:\.\.\.|…)?$/i,
+      build: (m) => {
+        const terms = m[1].split(/\s*\+\s*/).map(ratOf);
+        if (terms.length < 3 || terms.some((t) => !t) || terms[0][0] === 0n) return null;
+        // common ratio r = t1/t0, checked on every later pair
+        const [a, b] = terms; const rn = b[0] * a[1], rd = b[1] * a[0];
+        for (let i = 1; i + 1 < terms.length; i++) { const [p, q] = terms[i], [s, t] = terms[i + 1]; if (s * q * rd !== rn * t * p) return null; }
+        const fr = (n, d) => { const g = (x, y) => (y ? g(y, x % y) : x < 0n ? -x : x), k = g(n, d) || 1n, s = d < 0n ? -1n : 1n; return (d / k) * s === 1n ? `${(n / k) * s}` : `${(n / k) * s}/${(d / k) * s}`; };
+        const a0 = fr(a[0], a[1]), r = fr(rn, rd);
+        return out(`sum((${a0})*(${r})^n, n, 0, oo)`, `geometric series with first term ${a0} and ratio ${r}`);
+      } },
+    { id: "prob-die-kind", re: /^(?:what is )?(?:the )?(?:probability|chance) (?:of )?(?:rolling|getting|throwing) (?:an? )?(even|odd|prime) (?:number )?(?:on|with) (?:a |one )?(?:fair |single |standard |six[- ]sided |regular )*(?:die|dice)$/i,
+      build: (m) => { const f = DIE[m[1].toLowerCase()]; return out(`${f.length}/6`, `a fair die: ${f.length} of 6 faces (${f.join(", ")}) are ${m[1].toLowerCase()}`); } },
+    { id: "prob-die-cmp", re: /^(?:what is )?(?:the )?(?:probability|chance) (?:of )?(?:rolling|getting|throwing) (?:a (?:number )?)?(greater than|more than|higher than|less than|lower than|at least|at most) (\d) (?:on|with) (?:a |one )?(?:fair |single |standard |six[- ]sided |regular )*(?:die|dice)$/i,
+      build: (m) => { const k = +m[2], c = m[1].toLowerCase(); const faces = [1, 2, 3, 4, 5, 6].filter((v) => /greater|more|higher/.test(c) ? v > k : /less|lower/.test(c) ? v < k : c === "at least" ? v >= k : v <= k);
+        return out(`${faces.length}/6`, `a fair die: ${faces.length} of 6 faces (${faces.join(", ") || "none"}) qualify`); } },
+    { id: "prob-coin-run", re: /^(?:what (?:is|are) )?(?:the )?(probability|chance|odds) (?:of )?(?:flipping|getting|tossing|throwing)? ?(?:(two|three|four|five|six|\d+) (heads|tails)(?: in a row)?|(heads|tails) (twice|three times|(two|three|four|five|\d+) times)(?: in a row)?)$/i,
+      build: (m) => { const W = { two: 2, three: 3, four: 4, five: 5, six: 6, twice: 2, "three times": 3 };
+        const k = m[2] ? (W[m[2].toLowerCase()] || +m[2]) : (W[m[5].toLowerCase()] || W[(m[6] || "").toLowerCase()] || +m[6]);
+        if (!(k >= 1 && k <= 60)) return null; const side = (m[3] || m[4]).toLowerCase();
+        const notes = /odds/i.test(m[1]) ? [`Read "odds" as a probability; as odds against it is ${2 ** k - 1} : 1.`] : [];
+        return out(`(1/2)^${k}`, `${k} fair coin flips, all ${side}: (1/2)^${k}`, { notes }); } },
+    { id: "sales-tax", re: /^(?:what is |how much is |find |calculate )?(?:the )?(?:sales )?tax (?:on|for) (?:a |an |the )?\$?(\d+(?:\.\d+)?)(?: dollars?| bucks| euros?| pounds?)?(?: [a-z]+)? (?:at|with) (?:a )?(\d+(?:\.\d+)?) ?(?:%|percent)(?: tax| rate| tax rate| sales tax)?$/i,
+      build: (m) => out(`${m[2]}/100*${m[1]}`, `tax = ${m[2]}% of ${m[1]}`) },
+    { id: "sales-tax", re: /^(?:what is |how much is |find |calculate )?(?:the )?(?:total|total cost|final price|price) (?:of |for )?(?:a |an |the )?\$?(\d+(?:\.\d+)?)(?: dollars?| bucks| euros?| pounds?)?(?: [a-z]+)? (?:with|after|including|plus) (?:a )?(\d+(?:\.\d+)?) ?(?:%|percent) (?:sales )?tax$/i,
+      build: (m) => out(`${m[1]}*(1 + ${m[2]}/100)`, `price plus ${m[2]}% tax: ${m[1]} x (1 + ${m[2]}/100)`) },
+    { id: "age-times-later", re: /^(\w+) is (twice|three times|four times|five times|(\d+) times) as old as (?:his|her|their) (son|daughter|child|brother|sister|niece|nephew|grandson|granddaughter)\. in (\d+) years,? (?:he|she|they|\1) will (?:only )?be (twice|three times|four times|(\d+) times) as old(?: as (?:his|her|their) \4)?\. how old is (?:the|his|her|their) \4(?: now)?$/i,
+      build: (m) => { const W = { twice: 2, "three times": 3, "four times": 4, "five times": 5 };
+        const k1 = W[m[2].toLowerCase()] || +m[3], k2 = W[m[6].toLowerCase()] || +m[7], t = m[5];
+        if (!(k1 > k2 && k2 > 1)) return null; // otherwise no positive age satisfies it
+        const eqn = `${k1}y + ${t} = ${k2}(y + ${t})`;
+        return { math: eqn, goal: "solve", variable: "y", interpretation: `let y be the ${m[4]}'s age now (${m[1]} is ${k1}y): ${eqn}` }; } },
     // ---------------------------------------------------------------- probability
     { id: "prob-die", re: /^(?:what is )?(?:the )?probability (?:of )?(?:rolling|getting|throwing) (?:a|an) (\d) (?:on|with) (?:a |one )?(?:fair |single |standard |six[- ]sided )*(?:die|dice)$/i,
       build: (m) => (+m[1] >= 1 && +m[1] <= 6 ? out("1/6", `one favourable face out of 6 equally likely faces: 1/6`) : null) },
@@ -287,7 +348,7 @@ export function morePatterns({ expr, mathOf, LEAD, re }) {
         if (hemi) return out(vol ? `2*pi*(${r})^3/3` : `3*pi*(${r})^2`, vol ? "hemisphere volume (2/3) pi r^3" : "hemisphere total surface area 3 pi r^2 (curved 2 pi r^2 plus the flat disc)");
         return out(vol ? `4*pi*(${r})^3/3` : `4*pi*(${r})^2`, vol ? "sphere volume (4/3) pi r^3" : "sphere surface area 4 pi r^2");
       } },
-    { id: "geo-solid", re: re(`^${LEAD}(volume|surface area|lateral surface area|curved surface area) (?:of )?(?:a |the )?(?:right )?(?:circular )?(cylinder|cone) (?:with|of|whose) radius ${num}(?: ?\\w+)?,? and (?:a )?height ${num}(?: ?\\w+)?$`),
+    { id: "geo-solid", re: re(`^${LEAD}(volume|surface area|lateral surface area|curved surface area) (?:of )?(?:a |the )?(?:right )?(?:circular )?(cylinder|cone),? (?:(?:with|of|whose|having) )?(?:a )?radius(?: of| is| =)? ?${num}(?: ?\\w+)?(?:,? and|,)? (?:a )?height(?: of| is| =)? ?${num}(?: ?\\w+)?$`),
       build: (m) => {
         const [q, s, r, h] = [m[1].toLowerCase(), m[2].toLowerCase(), m[3], m[4]];
         if (s === "cylinder") return out(q === "volume" ? `pi*(${r})^2*(${h})` : /lateral|curved/.test(q) ? `2*pi*(${r})*(${h})` : `2*pi*(${r})^2 + 2*pi*(${r})*(${h})`, q === "volume" ? "cylinder volume pi r^2 h" : /lateral|curved/.test(q) ? "curved surface 2 pi r h" : "total surface 2 pi r^2 + 2 pi r h");

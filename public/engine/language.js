@@ -111,6 +111,8 @@ const PHRASES = [
 function phrases(s) {
   let t = powerWords(s);
   for (const [re, rep] of PHRASES) t = t.replace(re, rep);
+  // "ln of e squared" / "square root of x squared": "of" takes the whole powered word, ln(e^2) not ln(e)^2
+  t = t.replace(/\b(sqrt|cbrt|ln|log(?:_[^\s(]+)?|abs)\s+(\([^()]+\)\^\([^()]+\))/g, "$1($2)");
   return t.replace(/\s+/g, " ").trim();
 }
 
@@ -143,13 +145,21 @@ const clean = (s) => s.replace(/(?<=[A-Za-z]{2})!+$/, "").replace(/[?.]+$/, "").
 
 // ---------------------------------------------------------------- helpers
 function expr(s) { return phrases(wordsToNumbers(s)).replace(/^\s*the\s+/i, ""); }
-function list(a, b) { return [a, b].filter(Boolean).join(",").split(/\s*(?:,|\band\b)\s*/).map((t) => expr(t)).filter(Boolean).join(", "); }
+function list(a, b) {
+  const joined = [a, b].filter(Boolean).join(",");
+  // "5 10 15 20" is four numbers, not their product 5*10*15*20
+  const parts = /^\s*-?\d+(?:\.\d+)?(?:\s+-?\d+(?:\.\d+)?)+\s*$/.test(joined) ? joined.trim().split(/\s+/) : joined.split(/\s*(?:,|\band\b)\s*/);
+  return parts.map((t) => expr(t)).filter(Boolean).join(", ");
+}
 function paren(k) { return /^\d+$/.test(String(k)) ? String(k) : `(${k})`; }
 // distance / time / rate units for the travel word problems: [kind, name, base length or time]
 const TRAVEL_UNITS = { km: ["len", "km"], kilometers: ["len", "km"], kilometres: ["len", "km"], miles: ["len", "mi"], mile: ["len", "mi"], mi: ["len", "mi"],
   m: ["len", "m"], meters: ["len", "m"], metres: ["len", "m"], hours: ["time", "h"], hour: ["time", "h"], h: ["time", "h"], hr: ["time", "h"], hrs: ["time", "h"],
   minutes: ["time", "min"], minute: ["time", "min"], min: ["time", "min"], seconds: ["time", "s"], second: ["time", "s"], s: ["time", "s"] };
-const RATE_UNITS = { "km/h": ["km", "h"], kph: ["km", "h"], kmh: ["km", "h"], mph: ["mi", "h"], "mi/h": ["mi", "h"], "m/s": ["m", "s"] };
+const RATE_UNITS = { "km/h": ["km", "h"], kph: ["km", "h"], kmh: ["km", "h"], mph: ["mi", "h"], "mi/h": ["mi", "h"], "m/s": ["m", "s"],
+  "km per hour": ["km", "h"], "kilometers per hour": ["km", "h"], "kilometres per hour": ["km", "h"], "km an hour": ["km", "h"], "kilometers an hour": ["km", "h"],
+  "miles per hour": ["mi", "h"], "miles an hour": ["mi", "h"], "meters per second": ["m", "s"], "metres per second": ["m", "s"], "m per second": ["m", "s"] };
+const RATE_RE = String.raw`(km\/h|kph|kmh|mph|mi\/h|m\/s|(?:km|kilomet(?:er|re)s|miles) (?:per|an) hour|(?:m|met(?:er|re)s) per second)`;
 const unitOf = (u, kind) => { const t = TRAVEL_UNITS[String(u).toLowerCase()]; return t && t[0] === kind ? t[1] : null; };
 const rateOf = (u) => RATE_UNITS[String(u).toLowerCase()] || null;
 // the variable of an expression: its free symbols from the parse tree (so e, pi and i, which are
@@ -389,10 +399,10 @@ const PATTERNS = [
   { id: "distance", re: /^(?:a|the) (?:car|train|bike|cyclist|runner|person|plane|boat|bus|truck) (?:travels|goes|drives|covers) (\S+?) ?(km|kilometers|kilometres|miles|m|mi|meters|metres) in (\S+?) ?(hours?|h|hrs?|minutes?|min|seconds?|s)(?:\.|,)? (?:what is|find) (?:its|the) (?:average )?speed$/i,
     build: (m) => { const d = unitOf(m[2], "len"), t = unitOf(m[4], "time"); if (!d || !t || !mathOf(m[1]) || !mathOf(m[3])) return null;
       return { math: `${m[1]}/${paren(m[3])}`, goal: "evaluate", interpretation: `speed = distance / time = ${m[1]} ${d} / ${m[3]} ${t}, in ${d}/${t}`, notes: [`The answer is in ${d}/${t}.`] }; } },
-  { id: "distance", re: /^how long (?:does it take|will it take|would it take)(?: (?:a|the) (?:car|train|bike|runner|plane|boat|bus|truck))? to (?:travel|go|drive|cover) (\S+?) ?(km|kilometers|kilometres|miles|mi|m|meters|metres) at (\S+?) ?(km\/h|kph|kmh|mph|mi\/h|m\/s)$/i,
+  { id: "distance", re: new RegExp(String.raw`^how long (?:does it take|will it take|would it take)(?: (?:a|the) (?:car|train|bike|runner|plane|boat|bus|truck))? to (?:travel|go|drive|cover) (\S+?) ?(km|kilometers|kilometres|miles|mi|m|meters|metres) at (?:a speed of |an average speed of )?(\S+?) ?${RATE_RE}$`, "i"),
     build: (m) => { const d = unitOf(m[2], "len"), r = rateOf(m[4]); if (!d || !r || r[0] !== d || !mathOf(m[1]) || !mathOf(m[3])) return null;
       return { math: `${m[1]}/${paren(m[3])}`, goal: "evaluate", interpretation: `time = distance / speed = ${m[1]} ${d} / ${m[3]} ${m[4]}, in ${r[1]}`, notes: [`The answer is in ${r[1]}.`] }; } },
-  { id: "distance", re: /^how far (?:does|will|would|can) (?:a|the) (?:car|train|bike|runner|person|plane|boat|bus|truck) (?:travel|go|drive) in (\S+?) ?(hours?|h|hrs?|minutes?|min|seconds?|s) at (\S+?) ?(km\/h|kph|kmh|mph|mi\/h|m\/s)$/i,
+  { id: "distance", re: new RegExp(String.raw`^how far (?:does|will|would|can) (?:a|the) (?:car|train|bike|runner|person|plane|boat|bus|truck) (?:travel|go|drive) in (\S+?) ?(hours?|h|hrs?|minutes?|min|seconds?|s) at (?:a speed of |an average speed of )?(\S+?) ?${RATE_RE}$`, "i"),
     build: (m) => { const t = unitOf(m[2], "time"), r = rateOf(m[4]); if (!t || !r || r[1] !== t || !mathOf(m[1]) || !mathOf(m[3])) return null;
       return { math: `${paren(m[1])}*${paren(m[3])}`, goal: "evaluate", interpretation: `distance = time * speed = ${m[1]} ${t} * ${m[3]} ${m[4]}, in ${r[0]}`, notes: [`The answer is in ${r[0]}.`] }; } },
   { id: "simple-interest", re: /^(?:what is |find |calculate )?(?:the )?simple interest (?:on|for) \$?(\S+) at (\S+) ?% (?:per year |a year |per annum |annually )?for (\S+) years?$/i,

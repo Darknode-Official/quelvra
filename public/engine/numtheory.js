@@ -289,7 +289,8 @@ export function factorTree(n) {
   const parts = f.factors.map(([p, e]) => (e === 1n ? X.num(p) : X.pow(X.num(p), X.num(e))));
   for (const u of f.unfactored) parts.push(X.num(u));
   if (f.sign < 0n) parts.unshift(X.NEG_ONE);
-  return parts.length === 0 ? X.ONE : parts.length === 1 ? parts[0] : X.mul(...parts);
+  // ordered: printed as written (2^3*3^2*5), not with the plain prime pulled to the front as a coefficient
+  return parts.length === 0 ? X.ONE : parts.length === 1 ? parts[0] : f.sign < 0n ? X.mul(...parts) : X.mk("mul", parts, { ordered: true });
 }
 function fullFactor(n) {
   const f = factor(n);

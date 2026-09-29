@@ -195,6 +195,7 @@ class R {
         return mrow(...out);
       }
       case "mul": {
+        if (u.ordered) return this.prod(1n, u.args);
         const p = fracParts(u);
         let s;
         if (p.den.length || p.cd !== 1n) {

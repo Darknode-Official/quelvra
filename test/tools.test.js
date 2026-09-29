@@ -251,7 +251,7 @@ test("tools: histogram bins and box plot geometry", () => {
 test("tools: number theory requests: factor, gcd, lcm, powmod", () => {
   const f = solve(C.ntRequest("factor", "360").input);
   eq(C.verdict(f).state, "verified");
-  eq(C.answerText(first(f)), "5*2^3*3^2");
+  eq(C.answerText(first(f)), "2^3*3^2*5");
   eq(C.answerText(first(solve(C.ntRequest("gcd", "462, 1071").input))), "21");
   eq(C.answerText(first(solve(C.ntRequest("lcm", "4 6 10").input))), "60");
   eq(C.answerText(first(solve(C.ntRequest("powmod", "2", "100", "97").input))), "16");

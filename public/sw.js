@@ -4,7 +4,7 @@
 // successful response refreshes the cache. Requests outside /quelvra/ are never intercepted.
 // FILES and VERSION are generated: run `node tools/quelvra-sw-files.mjs` before deploying.
 
-const VERSION = "quelvra-mukvwvwz";
+const VERSION = "quelvra-mum111of";
 const BASE = new URL("./", self.location).pathname; // "/" on its own site, "/quelvra/" on darknode.ai
 const FILES = [
   "",

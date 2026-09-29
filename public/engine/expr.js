@@ -37,7 +37,7 @@ let NEXT_ID = 1;
 const TABLE = new Map();
 export const srcLoc = new WeakMap(); // node -> { start, end } set by the parser (first sighting)
 
-const EXTRA_KEYS = ["v", "name", "op", "dir", "q", "lo_open", "hi_open"];
+const EXTRA_KEYS = ["v", "name", "op", "dir", "q", "lo_open", "hi_open", "ordered"];
 
 function keyOf(k, args, extra) {
   let key = k;

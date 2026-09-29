@@ -2148,7 +2148,7 @@ function proportions(sents, text) {
   let A, W1, S1, B, W2, money = false, m;
   if ((m = /(\d+(?:\.\d+)?)\s+([a-z]+)(?:\s+of\s+([a-z]+))?\s+(?:for|per|to make|to bake|makes?|in|every|to run|to travel|to drive|to go|to cover)\s+(?:a |an |the )?(\d+(?:\.\d+)?)\s+([a-z]+)/.exec(stmt))) {
     [, A, W1, S1, B, W2] = m;
-  } else if ((m = /(\d+(?:\.\d+)?)\s+([a-z]+)(?:\s+of\s+([a-z]+))?\s+(?:cost|costs)\s+(\d+(?:\.\d+)?)\s+(dollars?|pounds?|euros?)/.exec(stmt))) {
+  } else if ((m = /(\d+(?:\.\d+)?)\s+([a-z]+)(?:\s+of\s+([a-z]+))?\s+(?:cost|costs)\s+(\d+(?:\.\d+)?)\s+(dollars?|pounds?|euros?|cents?)/.exec(stmt))) {
     [, A, W1, S1, B, W2] = m; money = true;
   } else if ((m = /([a-z]+)\s+(?:at|for)\s+(\d+(?:\.\d+)?)\s+(?:for|per)\s+(?:a |an |the )?(\d+(?:\.\d+)?)\s+([a-z]+)/.exec(stmt))) {
     W1 = m[1]; A = m[2]; B = m[3]; W2 = m[4]; // "pencils at 3 for 1 dollar"

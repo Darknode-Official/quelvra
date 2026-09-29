@@ -238,7 +238,12 @@ const COMMANDS = {
     }
     if (res === X.TRUE && proof) return { ...exact(res), extra: { certificate: proof.certificate }, verify: () => V(checkCertificate(proof.certificate) ? "verified-exact" : "failed", `primality certificate (${proof.method}) re-checked`, "certificate") };
     if (!res) return { answers: [{ kind: "none", label: `probably prime (${r.method}); not proven` }], solutionStatus: "partial", verify: () => ({ status: "partial", checks: [] }) };
-    return { ...exact(res), verify: () => {
+    // say it in words, with the witness: "91 is not prime: 91 = 7*13"
+    let label = res === X.TRUE ? `${n} is prime` : n < 2n ? `${n} is not prime (primes are whole numbers greater than 1)` : `${n} is not prime`;
+    if (res === X.FALSE && n > 3n) { try { const fr = T.factor(n, { budget: 200000 }); if (fr.complete && fr.factors.length) label += `: ${n} = ${fr.factors.map(([p, e]) => (e === 1n ? `${p}` : `${p}^${e}`)).join("*")}`; } catch (_) {} }
+    const base = exact(res);
+    base.answers = base.answers.map((a) => ({ ...a, label }));
+    return { ...base, verify: () => {
       if (res === X.FALSE && n > 1n) {
         const f = T.factor(n, { budget: 200000 });
         if (f.factors && f.factors.length && !(f.factors.length === 1 && f.factors[0][1] === 1n && f.factors[0][0] === n)) return V("verified-exact", `${n} has the factor ${f.factors[0][0]}`, "witness-factor");

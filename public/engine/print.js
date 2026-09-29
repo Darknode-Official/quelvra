@@ -123,6 +123,7 @@ function txtRaw(u, o) {
       return s;
     }
     case "mul": {
+      if (u.ordered) return u.args.map((f) => txt(f, PREC.mul, o)).join("*");
       const p = fracParts(u);
       // a factor that prints with a leading minus (an unsimplified product like |3|*(-2z)) keeps its
       // brackets, else "|3|-2z" would read back as a difference
@@ -272,6 +273,7 @@ function texRaw(u) {
       return s;
     }
     case "mul": {
+      if (u.ordered) return u.args.map((f) => tex(f, PREC.mul)).join(" \\cdot ");
       const p = fracParts(u);
       const numF = p.num.map((f) => tex(f, PREC.mul));
       let top = p.cn !== 1n || !numF.length ? p.cn.toString() : "";
