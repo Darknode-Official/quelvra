@@ -13,7 +13,7 @@ import { parseDetailed } from "./parse.js";
 import { solve as orchestrate, register, toContractVerification } from "./orchestrate.js";
 import { explain } from "./explain.js";
 import { checkLines } from "./mistakes.js";
-import { setApproxHook } from "./strategies/basic.js";
+import { setApproxHook, approxOf } from "./strategies/basic.js";
 import "./strategies/compute.js";
 import { solveResearch } from "./strategies/research.js";
 import * as NUM from "./numeric.js";
@@ -89,9 +89,28 @@ export function solve(input, options = {}) {
   }
   const r = orchestrate(text, options);
   if (options.mode === "numeric") attachNumeric(r, options);
+  if (r.ok && r.input && r.input.places) toPlaces(r, r.input.places);
   r.explanation = explain(r, options.mode === "answer" ? "answer" : options.mode === "teach" ? "teach" : "steps");
   progress("done");
   return r;
+}
+
+// "sqrt 2 to 10 decimal places": re-evaluate each constant answer at the number of significant
+// digits that gives exactly that many decimals (the first evaluation tells how many digits sit
+// before the point). The value keeps its proven error bound; nothing is truncated by hand.
+function toPlaces(r, places) {
+  const answers = r.answers || [];
+  answers.forEach((a, i) => {
+    const ex = answers[i - 1];
+    if (a.kind !== "approx" || a.tree || !a.approx || !a.approx.value || !ex || !ex.tree || X.freeSymbols(ex.tree).size !== 0) return;
+    // a rational is written out to a number of decimal places directly; anything else is evaluated to significant digits
+    if (X.isNum(ex.tree)) { const n = approxOf(ex.tree, Math.min(1000, places)); if (n && n.value) a.approx = n; return; }
+    const v = a.approx.value.replace(/^-/, ""), ip = v.split(".")[0].replace(/^0+/, "");
+    const lead = ip ? 0 : ((v.split(".")[1] || "").match(/^0*/) || [""])[0].length; // zeros right after the point of 0.00123
+    const digits = ip.length + places - lead;
+    if (digits < 1) { r.input.warnings = [...(r.input.warnings || []), { msg: `To ${places} decimal place${places === 1 ? "" : "s"} the value rounds to 0; the digits shown are the leading significant ones.`, pos: 0 }]; return; }
+    try { const n = approxOf(ex.tree, Math.min(1000, digits)); if (n && n.value) a.approx = n; } catch (_) { /* keep the first evaluation */ }
+  });
 }
 
 // Research results carry their own solutionStatus: exact (decided by exhaustive computation),

@@ -475,7 +475,10 @@ function confidencePanel(r) {
     statusBadge(conf === null ? null : conf >= 0.999 ? true : conf >= 0.8 ? "warn" : false, conf === null ? "Unknown" : conf >= 0.999 ? "Read exactly" : `${Math.round(conf * 100)}% confident`),
     h("div", { class: "conf-d" }, `Source: ${rec.source || "text"}` + (warnings.length ? ` · ${warnings.length} warning${warnings.length > 1 ? "s" : ""}` : "")),
     ...warnings.map((w) => h("div", { class: "warn-line" }, w.msg || textOf(w))),
-    r.input && r.input.tree ? h("div", { class: "conf-d" }, "Read as ", mathEl(r.input.tree, { label: "Read as" })) : null
+    r.input && r.input.tree ? h("div", { class: "conf-d" }, "Read as ", mathEl(r.input.tree, { label: "Read as" })) : null,
+    // the model a sentence was translated with, and its stated conventions ("The answer is in percent.")
+    r.input && r.input.interpretation && r.input.interpretation !== r.input.text ? h("div", { class: "conf-d" }, `Understood as: ${r.input.interpretation}`) : null,
+    ...((r.input && r.input.notes) || []).map((n) => h("div", { class: "conf-d" }, n))
   ));
   // 2. classification
   const c = r.classification || {};

@@ -117,15 +117,12 @@ function everydayPatterns({ E, out, WN }) {
       build: (m) => { const geo = /geo/i.test(m[2]); if (geo !== /ratio/i.test(m[4]) || +m[1] < 1) return null; return out(geo ? `${m[3]}*(${m[5]})^(${m[1]} - 1)` : `${m[3]} + (${m[1]} - 1)*(${m[5]})`, geo ? `a r^(n - 1) with a = ${m[3]}, r = ${m[5]}, n = ${m[1]}` : `a + (n - 1) d with a = ${m[3]}, d = ${m[5]}, n = ${m[1]}`); } },
     // finite series written out: "2 + 5 + 8 + ... + 32", "1 + 2 + 4 + ... + 512"
     { id: "finite-series", re: /^(?:(?:find |what is |compute |calculate )?(?:the )?sum of (?:the )?(?:finite )?(?:arithmetic |geometric )?(?:series|sequence)?:? ?)?((?:-?\d+(?:\.\d+)?\s*\+\s*){2,}-?\d+(?:\.\d+)?)\s*\+\s*(?:\.\.\.|…)\s*\+\s*(-?\d+(?:\.\d+)?)$/i,
-      build: (m) => { const t = m[1].split(/\s*\+\s*/).map(Number), L = +m[2]; if (t.length < 3 || !t.every(Number.isInteger) || !Number.isInteger(L)) return null;
-        const d = t[1] - t[0];
-        if (t.every((v, i) => i === 0 || v - t[i - 1] === d) && d !== 0) { const n = (L - t[0]) / d + 1; if (!Number.isInteger(n) || n < t.length) return null;
-          return out(`${n}*(${t[0]} + ${L})/2`, `arithmetic series: ${n} terms from ${t[0]} to ${L} with difference ${d}, sum n (first + last)/2`); }
-        if (t[0] !== 0 && t[1] % t[0] === 0) { const r = t[1] / t[0]; if (Math.abs(r) < 2 || !t.every((v, i) => i === 0 || v === t[i - 1] * r)) return null;
-          let n = 1, v = t[0]; while (v !== L && Math.abs(v) <= Math.abs(L) && n < 200) { v *= r; n++; } if (v !== L || n < t.length) return null;
-          return out(`sum(${t[0]}*(${r})^k, k, 0, ${n - 1})`, `geometric series: ${n} terms, first ${t[0]}, ratio ${r}, last ${L}`); }
-        return null; } },
-    { id: "sum-notation", re: /^(?:find |what is |compute |calculate |evaluate )?(?:the )?sum (?:of )?(.+?) (?:from|for) (?:([a-z]) ?= ?)?(-?\d+) to (infinity|oo|∞|-?\d+)$/i,
+      build: (m) => finiteSeries(m[1].split(/\s*\+\s*/).map(Number), +m[2], out) },
+    // the same series listed with commas: "sum of the arithmetic series 3, 7, 11, ..., 99"
+    { id: "finite-series", re: /^(?:(?:find |what is |compute |calculate )?(?:the )?sum of (?:the )?(?:finite )?(?:arithmetic |geometric )?(?:series|sequence|terms|numbers)?:? ?)((?:-?\d+(?:\.\d+)?\s*,\s*){2,}-?\d+(?:\.\d+)?)\s*,?\s*(?:\.\.\.|…)\s*,?\s*(-?\d+(?:\.\d+)?)$/i,
+      build: (m) => finiteSeries(m[1].split(/\s*,\s*/).map(Number), +m[2], out) },
+    // "sum of 2^k for k from 0 to 10", "sum of 1/n^2 from n = 1 to infinity"
+    { id: "sum-notation", re: /^(?:find |what is |compute |calculate |evaluate )?(?:the )?sum (?:of )?(.+?) (?:from|for|as|where|with) (?:([a-z]) ?(?:=|from|runs from|goes from|going from) ?)?(-?\d+) (?:to|up to|through) (infinity|oo|∞|-?\d+)$/i,
       build: (m) => { const f = E(m[1]); if (!f) return null; const vs = [...new Set(f.replace(/sqrt|cbrt|sin|cos|tan|log|ln|exp|pi|abs/g, "").match(/[a-z]/g) || [])];
         const v = m[2] || (vs.length === 1 ? vs[0] : null); if (!v || (vs.length && !vs.every((x) => x === v))) return null; const hi = /inf|oo|∞/i.test(m[4]) ? "oo" : m[4];
         return out(`sum(${f}, ${v}, ${m[3]}, ${hi})`, `sum of ${f} for ${v} = ${m[3]} to ${hi === "oo" ? "infinity" : hi}`); } },
@@ -266,7 +263,82 @@ function everydayPatterns({ E, out, WN }) {
     { id: "solve-sign", re: /^(?:solve )?(.+?=.+?) for (?:the )?(positive|negative) (?:value of )?([a-z])$/i,
       build: (m) => { const t = E(m[1]); if (!t || (t.match(/=/g) || []).length !== 1) return null;
         return { math: `${t}, ${m[3]} ${/pos/i.test(m[2]) ? ">" : "<"} 0`, goal: "solve", variable: m[3], interpretation: `solve ${t} with ${m[3]} ${/pos/i.test(m[2]) ? "> 0" : "< 0"}` }; } },
+    // "inequality 2x - 5 > 3" with no verb: the relation itself is the request
+    { id: "inequality", re: /^(?:the )?(?:inequality|inequalities)[:\s]+(.+)$/i,
+      build: (m) => { const t = E(m[1]); return t && /[<>]/.test(t) && !/=$/.test(t) ? { math: t, goal: "solve", interpretation: `solve the inequality ${t}` } : null; } },
+    // "two numbers add to 20 and differ by 4" / "find two numbers whose sum is 20 and whose product is 96"
+    { id: "sum-difference", re: /^(?:find )?(?:two (?:numbers|integers)|2 numbers) (?:that |which |whose )?(?:add (?:up )?to|sum to|sum is|with (?:a )?sum(?: of)?|have (?:a )?sum(?: of)?|total(?:ing)?) (\S+?)(?:,| and|, and)? (?:that |which |whose |their |with |have |having |a |and )*(difference(?: is| of)?|differ by|product(?: is| of)?|multiply to) (\S+)$/i,
+      build: (m) => { const p = two(m[1].replace(/[,.]$/, ""), m[3].replace(/[,.]$/, "")); if (!p) return null; const prod = /product|multiply/i.test(m[2]);
+        return { math: prod ? `x + y = ${p[0]}, x*y = ${p[1]}` : `x + y = ${p[0]}, x - y = ${p[1]}`, goal: "solve", interpretation: prod ? `let the numbers be x and y: x + y = ${p[0]}, xy = ${p[1]}` : `let the numbers be x >= y: x + y = ${p[0]}, x - y = ${p[1]}` }; } },
+    // "is 2^31 - 1 prime": a whole-number expression, computed exactly first
+    { id: "is-prime", re: /^is (.+?) (?:a )?prime(?: number)?(?: or (?:composite|not))?$/i,
+      build: (m) => { const x = E(m[1]); if (!x || !/^[\d\s^+\-*()]+$/.test(x) || !/[\^+\-*]/.test(x)) return null;
+        const big = (x.match(/\^\s*\(?(\d+)/g) || []).some((p) => +p.replace(/^\^\s*\(?/, "") > 400); // keep the exact value small enough to test and prove quickly
+        return big ? null : out(`isprime(${x})`, `is ${x} prime`, { goal: "evaluate" }); } },
+    // number bases with a stated source base: "1010 base 2 to base 8", "0xff in binary", "ff hex to octal"
+    { id: "base-to-base", re: /^(?:convert |write |express |what is )?(?:the )?(?:number )?(0x[0-9a-f]+|0b[01]+|0o[0-7]+|[0-9a-z]+(?:_\d+| (?:from |in )?(?:binary|octal|hexadecimal|hex|ternary|base[- ]?\d+))) (?:to|in|into|as) (binary|octal|hexadecimal|hex|ternary|base[- ]?\d+|decimal|base[- ]?10|denary)$/i,
+      build: (m) => {
+        const src = m[1].toLowerCase(); let digits, b1;
+        const lit = /^0([xbo])([0-9a-f]+)$/.exec(src);
+        if (lit) { b1 = { x: 16, b: 2, o: 8 }[lit[1]]; digits = lit[2]; }
+        else { const q = /^([0-9a-z]+)(?:_(\d+)| (?:from |in )?(.+))$/.exec(src); if (!q) return null; digits = q[1]; b1 = q[2] ? Number(q[2]) : baseOf(q[3]); }
+        const b2 = /^(?:decimal|denary|base[- ]?10)$/i.test(m[2]) ? 10 : baseOf(m[2]);
+        if (!b1 || !b2 || b1 < 2 || b1 > 36 || b2 < 2 || b2 > 36 || b1 === b2 || digits.length > 200) return null;
+        const vals = [...digits].map((c) => parseInt(c, 36)); if (vals.some((v) => !(v < b1))) return null;
+        let v = 0n; for (const d of vals) v = v * BigInt(b1) + BigInt(d);
+        if (b2 === 10) return out(vals.map((d, i) => `${d}*${b1}^${vals.length - 1 - i}`).join(" + "), `positional value of ${digits} in base ${b1}`);
+        return out(`tobase(${v}, ${b2})`, `${digits} in base ${b1} is ${v} in decimal; written in base ${b2}`);
+      } },
+    // repeated dice: "probability of rolling a 6 twice in a row", "chance of two sixes with two dice"
+    { id: "prob-die-repeat", re: /^(?:what (?:is|are) )?(?:the )?(probability|chance|odds) (?:of )?(?:rolling|getting|throwing) (?:a |an )?(?:[1-6]|one|two|three|four|five|six) (twice|three times|four times|five times|(\d+) times)(?: in a row)?(?: (?:on|with|using) (?:a |one |the )?(?:fair |single |standard |six[- ]sided |regular )*(?:die|dice))?$/i,
+      build: (m) => { const k = m[3] ? +m[3] : { twice: 2, "three times": 3, "four times": 4, "five times": 5 }[m[2].toLowerCase()]; if (!(k >= 2 && k <= 60)) return null;
+        return out(`(1/6)^${k}`, `${k} independent rolls of a fair die, each 1/6: (1/6)^${k}`, { notes: /odds/i.test(m[1]) ? [`Read "odds" as a probability; as odds against it is ${6 ** k - 1} : 1.`] : [] }); } },
+    { id: "prob-die-repeat", re: /^(?:what (?:is|are) )?(?:the )?(probability|chance|odds) (?:of )?(?:rolling |getting |throwing )?(?:(two|three|four|five|\d+) (?:sixes|fives|fours|threes|twos|ones|[1-6](?:s|'s))|(double (?:six|sixes|[1-6])|snake eyes))(?: in a row)?(?: (?:on|with|using) (two|three|four|five|\d+) (?:fair |standard |six[- ]sided |regular )*dice)?$/i,
+      build: (m) => { const W = { two: 2, three: 3, four: 4, five: 5 }; const k = m[3] ? 2 : W[m[2].toLowerCase()] || +m[2]; const n = m[4] ? W[m[4].toLowerCase()] || +m[4] : k;
+        if (!(k >= 2 && k <= 60) || n !== k) return null;
+        return out(`(1/6)^${k}`, `${k} dice each showing the named face, 1/6 each: (1/6)^${k}`, { notes: /odds/i.test(m[1]) ? [`Read "odds" as a probability; as odds against it is ${6 ** k - 1} : 1.`] : [] }); } },
+    { id: "vector-angle", re: /^(?:what is |find |calculate |compute )?(?:the )?angle between (?:the )?(?:vectors? )?[(<[]\s*(-?[\d.]+(?:\s*,\s*-?[\d.]+)+)\s*[)>\]] and (?:the )?(?:vector )?[(<[]\s*(-?[\d.]+(?:\s*,\s*-?[\d.]+)+)\s*[)>\]](?: (in degrees)| in radians)?$/i,
+      build: (m) => vectorAngle(m[1], m[2], !!m[3], out) },
+    { id: "mixed-units", re: /^(?:convert |what is |express |write )?(\d+(?:\.\d+)?) ([a-z]+)(?:,| and|, and)? (\d+(?:\.\d+)?) ([a-z]+) (?:to|in|into|as) (?:total |just |only )?([a-z]+)$/i,
+      build: (m) => mixedUnits(m[1], m[2], m[3], m[4], m[5], out) },
+    { id: "mixed-units", re: /^how many ([a-z]+) (?:is|are|in|make|equal) (\d+(?:\.\d+)?) ([a-z]+)(?:,| and|, and)? (\d+(?:\.\d+)?) ([a-z]+)$/i,
+      build: (m) => mixedUnits(m[2], m[3], m[4], m[5], m[1], out) },
+    // "a shirt costs 40 after a 20% discount, what was the original price"
+    { id: "original-price", re: new RegExp(String.raw`^(?:an? |the )?(?:[a-z]+ )?(?:costs?|is|was|sells? for|now costs|is now|is priced at|is selling for|sold for) ${AMT} after an? (\d+(?:\.\d+)?) ?(?:%|percent) (?:discount|reduction|markdown|off|price cut)[,.]? (?:what was|what is|what's|find) (?:the |its )?(?:original|regular|full|old|list|pre-sale) price$`, "i"),
+      build: (m) => (+m[2] < 100 ? out(`${m[1]}/(1 - ${m[2]}/100)`, `the sale price is (100 - ${m[2]})% of the original: ${m[1]} / (1 - ${m[2]}/100)`) : null) },
   ];
+}
+// "2 + 5 + 8 + ... + 32": the listed terms fix the pattern (arithmetic or geometric), the last term fixes the count
+function finiteSeries(t, L, out) {
+  if (t.length < 3 || !t.every(Number.isInteger) || !Number.isInteger(L)) return null;
+  const d = t[1] - t[0];
+  if (t.every((v, i) => i === 0 || v - t[i - 1] === d) && d !== 0) { const n = (L - t[0]) / d + 1; if (!Number.isInteger(n) || n < t.length) return null;
+    return out(`${n}*(${t[0]} + ${L})/2`, `arithmetic series: ${n} terms from ${t[0]} to ${L} with difference ${d}, sum n (first + last)/2`); }
+  if (t[0] !== 0 && t[1] % t[0] === 0) { const r = t[1] / t[0]; if (Math.abs(r) < 2 || !t.every((v, i) => i === 0 || v === t[i - 1] * r)) return null;
+    let n = 1, v = t[0]; while (v !== L && Math.abs(v) <= Math.abs(L) && n < 200) { v *= r; n++; } if (v !== L || n < t.length) return null;
+    return out(`sum(${t[0]}*(${r})^k, k, 0, ${n - 1})`, `geometric series: ${n} terms, first ${t[0]}, ratio ${r}, last ${L}`); }
+  return null;
+}
+// mixed units of one dimension: "3 hours 25 minutes in minutes", "5 feet 10 inches in inches"
+const MIXED = { hour: ["time", 3600], hr: ["time", 3600], hrs: ["time", 3600], h: ["time", 3600], minute: ["time", 60], min: ["time", 60], second: ["time", 1], sec: ["time", 1], s: ["time", 1],
+  foot: ["imperial", 12], feet: ["imperial", 12], ft: ["imperial", 12], inch: ["imperial", 1], inche: ["imperial", 1], in: ["imperial", 1], yard: ["imperial", 36], yd: ["imperial", 36], yds: ["imperial", 36],
+  pound: ["weight", 16], lb: ["weight", 16], lbs: ["weight", 16], ounce: ["weight", 1], oz: ["weight", 1],
+  kilometer: ["metric", 100000], kilometre: ["metric", 100000], km: ["metric", 100000], meter: ["metric", 100], metre: ["metric", 100], m: ["metric", 100], centimeter: ["metric", 1], centimetre: ["metric", 1], cm: ["metric", 1] };
+const mixedUnit = (w) => MIXED[String(w).toLowerCase().replace(/(?<=[a-z]{3})s$/, "")] || null;
+function mixedUnits(A, ua, B, ub, ut, out) {
+  const a = mixedUnit(ua), b = mixedUnit(ub), t = mixedUnit(ut);
+  if (!a || !b || !t || a[0] !== b[0] || a[0] !== t[0] || a[1] <= b[1]) return null; // the bigger unit is said first
+  const total = `${A}*${a[1] / b[1]} + ${B}`; // in the smaller unit
+  const math = t[1] === b[1] ? total : t[1] < b[1] ? `(${total})*${b[1] / t[1]}` : `(${total})/${t[1] / b[1]}`;
+  return out(math, `${A} ${ua} ${B} ${ub}: ${A} x ${a[1] / b[1]} ${ub} + ${B} ${ub}${t[1] === b[1] ? "" : `, then to ${ut}`}`, { notes: [`In ${ut}.`] });
+}
+// dot-product angle between two vectors of the same length
+function vectorAngle(a, b, degrees, out) {
+  const xs = a.split(/\s*,\s*/), ys = b.split(/\s*,\s*/);
+  if (xs.length !== ys.length || xs.length < 2 || xs.every((v) => +v === 0) || ys.every((v) => +v === 0)) return null;
+  const dot = xs.map((x, i) => `(${x})*(${ys[i]})`).join(" + "), na = xs.map((x) => `(${x})^2`).join(" + "), nb = ys.map((y) => `(${y})^2`).join(" + ");
+  const rad = `acos((${dot})/(sqrt(${na})*sqrt(${nb})))`;
+  return out(degrees ? `(${rad})*180/pi` : rad, `cos(theta) = (a . b)/(|a| |b|) with a . b = ${dot}`, { notes: [degrees ? "The angle is in degrees." : "The angle is in radians; add \"in degrees\" for degrees."] });
 }
 function profitOf(kind, pct, cost, sell) {
   const d = +sell - +cost, loss = /loss/i.test(kind);
@@ -310,7 +382,7 @@ export function morePatterns({ expr, mathOf, LEAD, re }) {
       build: (m) => { const body = E(m[3]); if (!body || /[=<>]/.test(body)) return null; return out(subst(body, m[2], m[4]), `${m[1]}(${m[4]}) for ${m[1]}(${m[2]}) = ${body}`); } },
     { id: "solve-trailing", re: /^(.+?[=<>].*?)[,.;:]? (?:find|solve for|what is|what's|determine) ([a-z])$/i,
       build: (m) => { const t = expr(m[1]); if (!/[=<>]/.test(t) || !new RegExp(`(?<![A-Za-z_])${m[2]}(?![A-Za-z_(])`).test(t)) return null; return { math: t, goal: "solve", variable: m[2], interpretation: `solve ${t} for ${m[2]}` }; } },
-    { id: "geo-series-sum", re: /^(?:(?:find |what is |compute |calculate )?(?:the )?sum of (?:the )?(?:infinite )?(?:geometric )?(?:series|sequence)?:? ?)?(.+?)\s*\+\s*(?:\.\.\.|…)?$/i,
+    { id: "geo-series-sum", re: /^(?:(?:find |what is |compute |calculate )?(?:the )?sum of (?:the )?(?:infinite )?(?:geometric )?(?:series|sequence)?:? ?)?(.+?)\s*\+\s*(?:\.\.\.|…)?(?:\s*(?:to infinity|to oo|forever|and so on(?: forever)?|etc\.?))?$/i,
       build: (m) => {
         const terms = m[1].split(/\s*\+\s*/).map(ratOf);
         if (terms.length < 3 || terms.some((t) => !t) || terms[0][0] === 0n) return null;
@@ -711,6 +783,12 @@ export function morePatterns({ expr, mathOf, LEAD, re }) {
       build: (m) => { const x = E(m[1]), d = nOf(m[2]); return x && /^\d+$/.test(d) ? out(`round(${x}, ${d})`, `round ${x} to ${d} decimal place${d === "1" ? "" : "s"} (halves away from zero)`) : null; } },
     { id: "round", re: /^round (.+?) to the nearest (whole number|integer|unit|one|ten|hundred|thousand|tenth|hundredth|thousandth)$/i,
       build: (m) => { const x = E(m[1]); const d = { "whole number": 0, integer: 0, unit: 0, one: 0, ten: -1, hundred: -2, thousand: -3, tenth: 1, hundredth: 2, thousandth: 3 }[m[2].toLowerCase()]; return x ? out(`round(${x}, ${d})`, `round ${x} to the nearest ${m[2]} (halves away from zero)`) : null; } },
+    // "sqrt 2 to 10 decimal places", "pi to 50 digits": the sentence sets the precision; the engine still computes with a proven error bound
+    { id: "precision", re: /^(?:what is |compute |calculate |give |give me |show |show me |find |evaluate |value of )?(.+?) (?:to|with|correct to|accurate to) (\d+|[a-z]+) (decimal places?|decimals?|dp|d\.p\.|places|digits|significant figures|significant digits|sig figs|s\.f\.)$/i,
+      build: (m) => { const x = E(m[1]), n = nOf(m[2]); if (!x || !/^\d+$/.test(n) || +n < 1 || +n > 1000 || /[=<>]/.test(x)) return null;
+        if (/[a-df-z]/i.test(x.replace(/sqrt|cbrt|pi|sinh|cosh|tanh|sin|cos|tan|ln|log|exp|arcsin|arccos|arctan|asin|acos|atan|abs/gi, ""))) return null; // a constant, not a formula in x
+        const places = /decimal|dp|d\.p|places/i.test(m[3]);
+        return out(x, `${x} to ${n} ${places ? "decimal place" : "significant digit"}${+n === 1 ? "" : "s"}`, places ? { places: +n } : { digits: +n }); } },
     { id: "as-fraction", re: /^(?:write |express |convert )?(\d*\.\d+(?:\.\.\.|…)?) (?:as|to|into) (?:a )?(?:fraction|ratio)(?: in (?:simplest|lowest) (?:form|terms))?$/i,
       build: (m) => {
         const r = repeatingDecimal(m[1]);
@@ -724,7 +802,7 @@ export function morePatterns({ expr, mathOf, LEAD, re }) {
       } },
 
     // ---------------------------------------------------------------- word problems
-    { id: "unit-rate", re: /^if (\S+) (\w+) costs? \$?([\d.]+)(?: dollars)?,? how much (?:do|does|would|will) (\S+) (?:\2|of them) cost$/i,
+    { id: "unit-rate", re: /^(?:if )?(\S+) (\w+) costs? \$?([\d.]+)(?: dollars)?,? (?:then )?how much (?:do|does|would|will) (\S+)(?: \2| of them)? cost$/i,
       build: (m) => { const a = nOf(m[1]), c = nOf(m[4]); return /^[\d.]+$/.test(a) && /^[\d.]+$/.test(c) ? out(`${m[3]}/${a}*${c}`, `unit price ${m[3]}/${a} per ${m[2].replace(/s$/, "")}, times ${c}`) : null; } },
     { id: "number-op", re: /^what number (increased by|plus|decreased by|minus|multiplied by|times|divided by) (\S+) (?:is|equals|gives) (\S+)$/i,
       build: (m) => {
@@ -746,7 +824,21 @@ export function morePatterns({ expr, mathOf, LEAD, re }) {
       build: (m) => out(`2*(${m[2]} + w) = ${m[1]}`, `perimeter 2(l + w) = ${m[1]} with l = ${m[2]}`, { goal: "solve", variable: "w" }) },
     { id: "rect-width", re: /^(?:a|the) rectangle has (?:an )?area (?:of )?([\d.]+) and (?:a )?length (?:of )?([\d.]+)[.,]? (?:find|what is) (?:its|the) width$/i,
       build: (m) => out(`(${m[1]})/(${m[2]})`, `width = area / length`) },
+    // point-slope: "line through (0, 1) with slope 2", "line with slope 2 through (0, 1)", "line with slope 2 and y-intercept 3"
+    { id: "line-slope", re: re(`^${LEAD}(?:equation (?:of|for) )?(?:the )?(?:straight )?line (?:through|passing through|that passes through|containing|going through) (?:the point )?${PT} (?:with|having|and|of|whose) (?:a )?(?:slope|gradient) (?:is |of |equal to |= ?)?(.+)$`),
+      build: (m) => lineSlope(m[1], m[2], m[3], E) },
+    { id: "line-slope", re: re(`^${LEAD}(?:equation (?:of|for) )?(?:the )?(?:straight )?line (?:with|having|of|whose) (?:a )?(?:slope|gradient) (?:is |of |equal to |= ?)?(.+?) (?:through|passing through|that passes through|containing|going through|and (?:through|passing through)) (?:the point )?${PT}$`),
+      build: (m) => lineSlope(m[2], m[3], m[1], E) },
+    { id: "line-slope", re: re(`^${LEAD}(?:equation (?:of|for) )?(?:the )?(?:straight )?line (?:with|having|of|whose) (?:a )?(?:slope|gradient) (?:is |of |equal to |= ?)?(.+?) and (?:a |whose |with )?y[- ]?intercept (?:is |of |equal to |at |= ?)?(.+)$`),
+      build: (m) => lineSlope("0", m[2], m[1], E) },
   ];
+}
+const PT = String.raw`\(\s*([^,()]+?)\s*,\s*([^,()]+?)\s*\)`;
+// a line from one point and a slope: hand the engine a second point one unit to the right
+function lineSlope(x1, y1, s, E) {
+  const a = E(x1), b = E(y1), k = E(s);
+  if (!a || !b || !k || /[a-z=<>]/i.test((a + b + k).replace(/sqrt|pi/g, ""))) return null;
+  return { math: `line(${a}, ${b}, (${a}) + 1, (${b}) + (${k}))`, goal: "line", interpretation: `line through (${a}, ${b}) with slope ${k}: it also passes through (${a} + 1, ${b} + ${k})` };
 }
 
 // Sentence tails that only restate the question ("... . find the numbers")

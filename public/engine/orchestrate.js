@@ -77,7 +77,7 @@ function recognise(input, options) {
     try {
       const { node, warnings, congruence } = parseDetailed(t.math);
       return { tree: node, text: t.math, original: src, warnings, congruence, source: source === "text" ? "language" : source, confidence: srcConf * t.confidence,
-        interpretation: t.interpretation, goal: t.goal, variable: t.variable, domain: t.domain, notes: t.notes || [] };
+        interpretation: t.interpretation, goal: t.goal, variable: t.variable, domain: t.domain, notes: t.notes || [], digits: t.digits, places: t.places };
     } catch (_) { /* fall through */ }
   }
   const words = unknownWords(src);
@@ -107,8 +107,11 @@ export function solve(input, options = {}) {
   const rec = recognise(input, options);
   // "solve z^3 = 1 over the complex numbers": the sentence itself can choose the complex domain
   const domain = options.domain === "complex" || (!options.domain && rec.domain === "complex") ? "complex" : "real";
+  // "pi to 50 digits": the sentence itself can ask for the precision (an explicit option still wins)
+  if (rec.digits && options.digits === undefined) options = { ...options, digits: rec.digits };
   const base = {
-    ok: false, input: { text: rec.text, tree: rec.tree || null, warnings: rec.warnings || [], interpretation: rec.interpretation || null, original: rec.original || null },
+    ok: false, input: { text: rec.text, tree: rec.tree || null, warnings: rec.warnings || [], interpretation: rec.interpretation || null, original: rec.original || null,
+      notes: rec.notes || [], places: rec.places || null },
     recognition: { source: rec.source, confidence: rec.error ? 0 : rec.confidence },
     classification: null, answers: [], solutionStatus: "unsolved",
     verification: { status: "not-applicable", checks: [] }, steps: [], conditions: [], rejected: [], attempts: [], graph: null, ms: 0,

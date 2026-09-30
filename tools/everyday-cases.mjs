@@ -140,6 +140,25 @@ export const CASES = [
   ["v3a-ser", "sum of 1 + 2 + 4 + ... + 512", 1023], ["v3a-ser", "20th term of the arithmetic sequence 5, 9, 13", 81], ["v3a-ser", "sum from k = 1 to 10 of k^2", 385],
   ["v3-fix", "0b101101", 45], ["v3-fix", "0xff + 1", 256], ["v3-fix", "solve 2x + y = 7 and x - y = 2 for x", { re: /x = 3, y = 1/ }],
   ["v3-fix", "sum of 1/2^n from 0 to infinity", 2], ["v3-fix", "is 145 a perfect square", { re: /false/ }], ["v3-fix", "roman numeral MCMXCIV", 1994],
+  // round 6: series, bases, primes, dice, vectors, mixed units, point-slope lines, word forms, precision
+  ["r6-ser", "sum of 2^k for k from 0 to 10", 2047], ["r6-ser", "sum of the arithmetic series 3, 7, 11, ..., 99", 1275], ["r6-ser", "sum of 1, 2, 4, 8, ..., 1024", 2047],
+  ["r6-ser", "1 + 1/2 + 1/4 + ... to infinity", 2], ["r6-ser", "1 + 1/3 + 1/9 + ... and so on", 1.5], ["r6-ser", "sum of 1/n^2 from n = 1 to infinity", PI * PI / 6],
+  ["r6-nt", "is 2^31 - 1 prime", { re: /true|is prime/ }], ["r6-nt", "is 2^11 - 1 prime", { re: /false|not prime/ }], ["r6-nt", "0xff in decimal", 255],
+  ["r6-nt", "convert 1010 base 2 to base 8", { re: /^12 \(base 8\)/ }], ["r6-nt", "0xff in binary", { re: /11111111/ }], ["r6-nt", "convert 777 base 8 to hex", { re: /1FF/ }],
+  ["r6-nt", "zz base 36 to decimal", 1295], ["r6-prob", "probability of rolling a 6 twice in a row", 1 / 36], ["r6-prob", "chance of two sixes with two dice", 1 / 36],
+  ["r6-prob", "probability of double six", 1 / 36], ["r6-prob", "odds of rolling a 6 three times in a row", 1 / 216],
+  ["r6-geo", "angle between (1,0) and (0,1)", PI / 2], ["r6-geo", "angle between (1, 0) and (1, 1) in degrees", 45], ["r6-geo", "angle between (1, 2, 3) and (-2, 1, 0)", PI / 2],
+  ["r6-geo", "equation of the line through (0,1) with slope 2", { re: /y = 2x \+ 1/ }], ["r6-geo", "line with slope 1/2 passing through (4, 1)", { re: /y = x\/2 - 1/ }],
+  ["r6-geo", "line with slope 2 and y-intercept 3", { re: /y = 2x \+ 3/ }], ["r6-geo", "line through (2, 3) with gradient -1/2", { re: /y = -x\/2 \+ 4/ }],
+  ["r6-unit", "3 hours 25 minutes in minutes", 205], ["r6-unit", "5 feet 10 inches in inches", 70], ["r6-unit", "how many seconds is 2 minutes 15 seconds", 135],
+  ["r6-unit", "12 feet 3 inches in feet", 12.25], ["r6-unit", "2 pounds 4 ounces in ounces", 36], ["r6-unit", "1 hour 30 minutes in seconds", 5400], ["r6-unit", "1 km 200 m in m", 1200],
+  ["r6-word", "a shirt costs 40 after a 20% discount, what was the original price", 50], ["r6-word", "if 3 apples cost 2.40, how much do 7 cost", 5.6],
+  ["r6-word", "3 apples cost 2.40, how much do 7 cost", 5.6], ["r6-word", "two numbers add to 20 and differ by 4", { re: /x = 12, y = 8/ }],
+  ["r6-word", "find two numbers whose sum is 20 and whose product is 96", { re: /x = 8, y = 12|x = 12, y = 8/ }], ["r6-word", "two integers sum to 30 and have a difference of 6", { re: /x = 18, y = 12/ }],
+  ["r6-alg", "inequality 2x - 5 > 3", { re: /4 < x|x > 4/ }], ["r6-alg", "the inequality x^2 < 9", { re: /-3 < x < 3/ }], ["r6-alg", "inequality: 3x + 1 >= 7", { re: /2 <= x|x >= 2/ }],
+  ["r6-prec", "sqrt(2) to 10 decimal places", { re: /1\.4142135624\b/ }], ["r6-prec", "pi to 50 digits", { re: /3\.1415926535897932384626433832795028841971693993751\b/ }],
+  ["r6-prec", "22/7 to 8 decimal places", { re: /3\.14285714\b/ }], ["r6-prec", "1/3 to 5 significant figures", { re: /0\.33333\b/ }], ["r6-prec", "1/700 to 3 decimal places", { re: /0\.001\b/ }],
+  ["r6-prec", "e to 30 decimal places", { re: /2\.718281828459045235360287471353\b/ }], ["r6-prec", "100*sqrt(2) to 2 decimal places", { re: /141\.42\b/ }],
 ];
 // Phrasings that look everyday but have no single right answer from the words given: Quelvra must refuse them.
 export const TRAPS = [
@@ -161,4 +180,12 @@ export const TRAPS = [
   "complement of 95 degrees", // only angles below 90 have one
   "permutations of 3 taken 5", // cannot take more than there are
   "roman numeral IIII", // not a valid numeral
+  "probability of rolling three 6s with two dice", // two dice cannot show three faces
+  "3 apples 2 pears in fruit", // not units of one dimension
+  "3 minutes 25 hours in minutes", // the bigger unit comes first
+  "convert 1012 base 2 to base 8", // 2 is not a binary digit
+  "sum of the arithmetic series 3, 7, 11, ..., 100", // 100 is not a term of the series
+  "angle between (0,0) and (1,1)", // the zero vector has no direction
+  "angle between (1,2) and (1,2,3)", // dimensions differ
+  "x^2 + 1 to 5 decimal places", // not a constant
 ];
