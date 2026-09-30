@@ -358,6 +358,7 @@ function chipsSection(r) {
 function approxView(a) {
   const ap = a.approx || {};
   const box = h("div", { class: "ans" });
+  if (a.label) box.append(h("div", { class: "ans-label" }, a.label));
   box.append(
     h("div", { class: "ans-math" }, h("span", { class: "approx" }, "≈ " + (ap.value ?? "") + (a.unit ? " " + a.unit : "")), h("div", { class: "approx-meta" }, approxMeta(ap))),
     h("div", { class: "ans-tools" }, copyBtn(String(ap.value ?? "") + (a.unit ? " " + a.unit : ""), "value", "Copy value"))

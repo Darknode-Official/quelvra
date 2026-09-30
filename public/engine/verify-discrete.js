@@ -44,6 +44,16 @@ function sundaramNth(n) {
   for (let i = 1; i <= m; i++) if (!out[i] && ++c === n) return 2 * i + 1;
   return NaN;
 }
+// primes <= n by the sieve of Sundaram (odd primes) plus the prime 2
+function sundaramCount(n) {
+  if (n < 2) return 0;
+  const m = Math.floor((n - 1) / 2);
+  const out = new Uint8Array(m + 1);
+  for (let i = 1; i <= m; i++) for (let j = i; i + j + 2 * i * j <= m; j++) out[i + j + 2 * i * j] = 1;
+  let c = 1;
+  for (let i = 1; i <= m; i++) if (!out[i]) c++;
+  return c;
+}
 function divisorLoop(n, what) {
   if (!Number.isSafeInteger(n) || n < 1 || n > 1e13) return NaN;
   let s = 0, c = 0;
@@ -111,6 +121,7 @@ export const DISCRETE_FLOAT = {
     return bigToNum(s);
   },
   nthprime: ([n]) => (Number.isInteger(n) && n >= 1 && n <= 300000 ? sundaramNth(n) : NaN),
+  primepi: ([n]) => (Number.isInteger(n) && n >= 0 && n <= 20000000 ? sundaramCount(n) : NaN),
   divisorsum: ([n]) => divisorLoop(n, "sum"),
   numdivisors: ([n]) => divisorLoop(n, "count"),
   modinv: ([a, m]) => {

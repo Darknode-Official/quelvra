@@ -159,11 +159,28 @@ export const CASES = [
   ["r6-prec", "sqrt(2) to 10 decimal places", { re: /1\.4142135624\b/ }], ["r6-prec", "pi to 50 digits", { re: /3\.1415926535897932384626433832795028841971693993751\b/ }],
   ["r6-prec", "22/7 to 8 decimal places", { re: /3\.14285714\b/ }], ["r6-prec", "1/3 to 5 significant figures", { re: /0\.33333\b/ }], ["r6-prec", "1/700 to 3 decimal places", { re: /0\.001\b/ }],
   ["r6-prec", "e to 30 decimal places", { re: /2\.718281828459045235360287471353\b/ }], ["r6-prec", "100*sqrt(2) to 2 decimal places", { re: /141\.42\b/ }],
+  // round 7: quantities, counting, circle parts, finance, scale words, negative powers
+  ["r7-qty", "how much is 3 dozen", 36], ["r7-qty", "half a dozen eggs", 6], ["r7-qty", "what is 1 million divided by 1 thousand", 1000], ["r7-qty", "1.5 million times 2", 3000000],
+  ["r7-qty", "what is 10 to the negative 2", 0.01], ["r7-qty", "5 to the minus 1", 0.2],
+  ["r7-count", "how many ways to choose a committee of 3 from 10 people", 120], ["r7-count", "how many ways can you pick 2 cards from 52", 1326], ["r7-count", "how many ways to arrange 3 of 8 books", 336],
+  ["r7-count", "how many outcomes when flipping 4 coins", 16], ["r7-count", "how many outcomes when rolling 3 dice", 216], ["r7-count", "how many even numbers between 1 and 100", 50],
+  ["r7-count", "how many odd numbers below 50", 25], ["r7-count", "how many multiples of 7 are there below 100", 14], ["r7-count", "how many multiples of 3 between 10 and 50", 13],
+  ["r7-count", "how many primes are less than 50", 15], ["r7-count", "how many primes between 10 and 30", 6], ["r7-count", "how many primes up to 1000000", 78498], ["r7-count", "what is the 100th odd number", 199],
+  ["r7-count", "what is the 7th even number", 14], ["r7-count", "primepi(100)", 25],
+  ["r7-time", "what fraction of an hour is 45 minutes", 0.75],
+  ["r7-time", "what percent of a day is 6 hours", 25], ["r7-time", "30 minutes is what fraction of a day", 1 / 48],
+  ["r7-geo", "area of a parallelogram base 8 height 5", 40], ["r7-geo", "area of a rhombus with diagonals 6 and 8", 24], ["r7-geo", "perimeter of a semicircle with radius 7", 7 * PI + 14],
+  ["r7-geo", "arc length of a 60 degree sector with radius 6", 2 * PI], ["r7-geo", "area of a sector with radius 6 and angle 60 degrees", 6 * PI],
+  ["r7-geo", "area of a sector with radius 2 and angle pi/3 radians", 2 * PI / 3], ["r7-geo", "perimeter of a sector with radius 6 and central angle 90 degrees", 3 * PI + 12],
+  ["r7-fin", "compound interest on 1000 at 5% for 3 years compounded monthly", { re: /161\.47\b/ }], ["r7-fin", "value of 1000 at 5% for 3 years compounded annually", 1157.625],
+  ["r7-fin", "monthly payment on a 200000 loan at 6% for 30 years", { re: /1199\.1\b/ }], ["r7-fin", "future value of 500 a month at 6% for 10 years", { re: /81939\.67\b/ }],
+  ["r7-fin", "how much do i need to invest at 4% to have 10000 in 5 years", { re: /8219\.27\b/ }],
 ];
 // Phrasings that look everyday but have no single right answer from the words given: Quelvra must refuse them.
 export const TRAPS = [
   "tom had 10 marbles and gave 3 to sam, how many does sam have", // the story tracks tom, not sam
   "how many days in a year", // 365 or 366; the units engine's Julian year would say 365.25
+  "how many days in 3 years", // same: 1095 or 1096
   "there are 25 students and a third are boys, how many boys", // not a whole number of people
   "profit if bought for 100 and sold for 80", // that is a loss
   "each angle of a pentagon", // only a regular pentagon has one angle size
@@ -188,4 +205,9 @@ export const TRAPS = [
   "angle between (0,0) and (1,1)", // the zero vector has no direction
   "angle between (1,2) and (1,2,3)", // dimensions differ
   "x^2 + 1 to 5 decimal places", // not a constant
+  "how many ways to choose a committee of 12 from 10 people", // cannot choose more than there are
+  "how many outcomes when flipping 100 coins", // beyond the supported size (2^100 is fine, but the pattern caps at 60)
+  "area of a sector with radius 6 and angle 400 degrees", // more than a full turn
+  "what fraction of a minute is 3 hours", // the smaller unit must be asked about
+  "what fraction of an hour is 45 apples", // not a unit of time
 ];

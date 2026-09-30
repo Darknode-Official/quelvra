@@ -36,7 +36,7 @@ export const FUNCTIONS = new Set([
     "completesquare", "apart", "identity", "line", "slope", "distance", "midpoint", "arclength", "areabetween", "volume", "avgvalue",
     "maximize", "minimize", "dot", "cross", "piecewise"],
   // discrete math, probability and statistics (discrete.js, strategies/compute-more.js)
-  ...["catalan", "fibonacci", "fib", "lucas", "subfactorial", "derangements", "multinomial", "stirling", "bell", "nthprime", "divisorsum", "numdivisors",
+  ...["catalan", "fibonacci", "fib", "lucas", "subfactorial", "derangements", "multinomial", "stirling", "bell", "nthprime", "primepi", "divisorsum", "numdivisors",
     "modinv", "powmod", "binompdf", "binomcdf", "geompdf", "geomcdf", "poissonpdf", "poissoncdf", "hypergeompdf", "normalpdf", "normalcdf",
     "invnorm", "pstdev", "pvariance", "quartiles", "iqr", "datarange", "zscore", "corr", "linreg", "tobase", "frombase",
     "polydiv", "polyrem", "polygcd", "coeff", "discriminant", "vertex", "wmean", "circle", "linedist", "rootsum", "rootprod", "diffat", "dblint", "grad", "solvein", "polar"],
@@ -46,7 +46,7 @@ const ARITY = new Map([
   ...["sin", "cos", "tan", "cot", "sec", "csc", "asin", "acos", "acot", "asec", "acsc", "sinh", "cosh", "tanh", "coth", "sech", "csch",
     "asinh", "acosh", "atanh", "ln", "exp", "sqrt", "cbrt", "abs", "sign", "floor", "ceil", "gamma", "factorial", "erf", "erfi", "erfc",
     "conj", "re", "im", "arg", "Si", "Ci", "Shi", "Chi", "Ei", "li", "FresnelS", "FresnelC", "isprime", "factorint", "phi", "divisors",
-    "catalan", "fibonacci", "fib", "lucas", "subfactorial", "derangements", "bell", "nthprime", "divisorsum", "numdivisors"].map((n) => [n, [1]]),
+    "catalan", "fibonacci", "fib", "lucas", "subfactorial", "derangements", "bell", "nthprime", "primepi", "divisorsum", "numdivisors"].map((n) => [n, [1]]),
   ...["binomial", "nCr", "nPr", "root", "stirling", "modinv", "geompdf", "geomcdf", "poissonpdf", "poissoncdf", "tobase", "frombase"].map((n) => [n, [2]]),
   ...["powmod", "binompdf", "binomcdf", "zscore"].map((n) => [n, [3]]),
   ["log", [1, 2]], ["round", [1, 2]], ["circle", [1]], ["linedist", [3]], ["rootsum", [1, 2]], ["rootprod", [1, 2]], ["diffat", [3]], ["dblint", [7]], ["solvein", [4, 6]], ["polar", [1]], ["hypergeompdf", [4]], ["normalpdf", [1, 3]], ["normalcdf", [2, 4]], ["invnorm", [1, 3]],
@@ -76,7 +76,7 @@ const WHOLE_ONLY = new Set(["li", "Si", "Ci", "Shi", "Chi", "Ei", "erfi", "erfc"
   "domain", "range", "zeros", "intercepts", "asymptotes", "extrema", "inflection", "monotonic", "critical", "tangent", "normal", "inverse",
   "completesquare", "apart", "identity", "line", "slope", "distance", "midpoint", "arclength", "areabetween", "volume", "avgvalue",
   "maximize", "minimize", "dot", "cross", "piecewise",
-  "catalan", "fibonacci", "fib", "lucas", "subfactorial", "derangements", "multinomial", "stirling", "bell", "nthprime", "divisorsum", "numdivisors",
+  "catalan", "fibonacci", "fib", "lucas", "subfactorial", "derangements", "multinomial", "stirling", "bell", "nthprime", "primepi", "divisorsum", "numdivisors",
     "modinv", "powmod", "binompdf", "binomcdf", "geompdf", "geomcdf", "poissonpdf", "poissoncdf", "hypergeompdf", "normalpdf", "normalcdf",
     "invnorm", "pstdev", "pvariance", "quartiles", "iqr", "datarange", "zscore", "corr", "linreg", "tobase", "frombase",
     "polydiv", "polyrem", "polygcd", "coeff", "discriminant", "vertex", "wmean", "circle", "linedist", "rootsum", "rootprod", "diffat", "dblint", "grad", "solvein", "polar"]);

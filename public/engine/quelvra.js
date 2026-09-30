@@ -104,13 +104,19 @@ function toPlaces(r, places) {
     const ex = answers[i - 1];
     if (a.kind !== "approx" || a.tree || !a.approx || !a.approx.value || !ex || !ex.tree || X.freeSymbols(ex.tree).size !== 0) return;
     // a rational is written out to a number of decimal places directly; anything else is evaluated to significant digits
-    if (X.isNum(ex.tree)) { const n = approxOf(ex.tree, Math.min(1000, places)); if (n && n.value) a.approx = n; return; }
+    if (X.isNum(ex.tree)) {
+      const n = approxOf(ex.tree, Math.min(1000, places)); if (n && n.value) a.approx = n;
+      // a compound-interest style fraction with hundreds of digits is exact but unreadable: the decimal is the answer asked for
+      if (ex.tree.v.n.toString().length + ex.tree.v.d.toString().length > 40) { ex.hidden = true; a.label = a.label || `to ${places} decimal place${places === 1 ? "" : "s"} (the exact fraction has ${ex.tree.v.n.toString().length + ex.tree.v.d.toString().length} digits)`; }
+      return;
+    }
     const v = a.approx.value.replace(/^-/, ""), ip = v.split(".")[0].replace(/^0+/, "");
     const lead = ip ? 0 : ((v.split(".")[1] || "").match(/^0*/) || [""])[0].length; // zeros right after the point of 0.00123
     const digits = ip.length + places - lead;
     if (digits < 1) { r.input.warnings = [...(r.input.warnings || []), { msg: `To ${places} decimal place${places === 1 ? "" : "s"} the value rounds to 0; the digits shown are the leading significant ones.`, pos: 0 }]; return; }
     try { const n = approxOf(ex.tree, Math.min(1000, digits)); if (n && n.value) a.approx = n; } catch (_) { /* keep the first evaluation */ }
   });
+  if (answers.some((a) => a.hidden)) r.answers = answers.filter((a) => !a.hidden);
 }
 
 // Research results carry their own solutionStatus: exact (decided by exhaustive computation),

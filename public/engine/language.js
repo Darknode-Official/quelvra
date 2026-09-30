@@ -24,13 +24,15 @@ const NUMBER_WORDS = {
   eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
   twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
 };
-const SCALES = { hundred: 100, thousand: 1000, million: 1e6, billion: 1e9 };
+const SCALES = { hundred: 100, thousand: 1000, million: 1e6, billion: 1e9, trillion: 1e12 };
 const MULT_WORDS = { twice: 2, double: 2, triple: 3, thrice: 3, half: "1/2", quadruple: 4 };
 const ORDINAL_DEN = { half: 2, halves: 2, third: 3, thirds: 3, quarter: 4, quarters: 4, fourth: 4, fourths: 4, fifth: 5, fifths: 5, sixth: 6, sixths: 6, eighth: 8, eighths: 8, tenth: 10, tenths: 10 };
 const ORDER_WORDS = { first: 1, "1st": 1, second: 2, "2nd": 2, third: 3, "3rd": 3, fourth: 4, "4th": 4, fifth: 5, "5th": 5 };
 
 // "twenty five" -> "25", "three hundred and two" -> "302", "two thirds" -> "(2/3)"
 export function wordsToNumbers(s) {
+  // "1.5 million", "3 thousand": a digit followed by a scale word
+  s = s.replace(/\b(\d+(?:\.\d+)?) (thousand|million|billion|trillion)\b/gi, (_, a, w) => String(BigInt(Math.round(+a * 1e6)) * BigInt(SCALES[w.toLowerCase()]) / 1000000n));
   const toks = s.split(/(\s+|-)/);
   const out = [];
   let acc = null, cur = 0;
@@ -52,7 +54,7 @@ export function wordsToNumbers(s) {
 // "(x + 1) squared" / "x squared": the operand is the balanced group or the token before the word
 function powerWords(s) {
   const WORDS = [[/^ raised to the power of (\S+)/, null], [/^ raised to the (\S+?)(?:st|nd|rd|th)? power\b/, null], [/^ raised to (\S+)/, null],
-    [/^ squared\b/, "2"], [/^ cubed\b/, "3"], [/^ to the power of (\S+)/, null], [/^ to the power (\S+)/, null], [/^ to the (\d+)(?:st|nd|rd|th)(?: power)?\b/, null]];
+    [/^ squared\b/, "2"], [/^ cubed\b/, "3"], [/^ to the power of (\S+)/, null], [/^ to the power (\S+)/, null], [/^ to the (\d+)(?:st|nd|rd|th)(?: power)?\b/, null], [/^ to the (-\d+(?:\.\d+)?)\b/, null]];
   for (let guard = 0; guard < 20; guard++) {
     let hit = null;
     for (const [re, e] of WORDS) {
@@ -110,7 +112,8 @@ const PHRASES = [
 ];
 function phrases(s) {
   let t = s.replace(/\b(\d+) and (?:a|one) half\b/g, "($1 + 1/2)").replace(/\b(\d+) and (?:a|one) quarter\b/g, "($1 + 1/4)").replace(/\b(\d+) and three quarters\b/g, "($1 + 3/4)")
-    .replace(/\bto the (?:power of )?(?:a |one )?half\b(?! of\b)/g, "^(1/2)");
+    .replace(/\bto the (?:power of )?(?:a |one )?half\b(?! of\b)/g, "^(1/2)")
+    .replace(/\bto the (?:negative|minus) (\d+(?:\.\d+)?)\b/g, "to the -$1"); // "10 to the negative 2"
   t = powerWords(t);
   // "1/2 divided by 1/4": a fraction next to a word operator is one number, (1/2) / (1/4), not 1/2/1/4
   if (/\b(?:divided by|over|times|multiplied by)\b/.test(t)) t = t.replace(/(?<![\w.)^/])(\d+(?:\.\d+)?\/\d+(?:\.\d+)?)(?![\w.(^/])/g, "($1)");

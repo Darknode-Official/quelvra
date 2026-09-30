@@ -306,6 +306,57 @@ function everydayPatterns({ E, out, WN }) {
     // "a shirt costs 40 after a 20% discount, what was the original price"
     { id: "original-price", re: new RegExp(String.raw`^(?:an? |the )?(?:[a-z]+ )?(?:costs?|is|was|sells? for|now costs|is now|is priced at|is selling for|sold for) ${AMT} after an? (\d+(?:\.\d+)?) ?(?:%|percent) (?:discount|reduction|markdown|off|price cut)[,.]? (?:what was|what is|what's|find) (?:the |its )?(?:original|regular|full|old|list|pre-sale) price$`, "i"),
       build: (m) => (+m[2] < 100 ? out(`${m[1]}/(1 - ${m[2]}/100)`, `the sale price is (100 - ${m[2]})% of the original: ${m[1]} / (1 - ${m[2]}/100)`) : null) },
+    // ---- round 7: quantities, counting, sectors, finance ----
+    { id: "dozen", re: /^(?:what is |how much is |how many is |how many are )?(half a|a|an|one|two|three|four|five|six|seven|eight|nine|ten|\d+(?:\.\d+)?) dozen(?: [a-z]+)?$/i,
+      build: (m) => { const k = /^half a$/i.test(m[1]) ? "1/2" : WN(m[1]); return k ? out(`${k}*12`, `${m[1].toLowerCase()} dozen: ${k} x 12`) : null; } },
+    { id: "choose-k", re: /^how many ways (?:are there )?(?:can (?:i|you|we|one|she|he) |to |of )?(?:choose|choosing|pick|picking|select|selecting|form|forming) (?:a |an )?(?:committee|team|group|subset|sample|set|hand)? ?(?:of )?(\d+) (?:people |members |students |items |objects |things |players |cards |books |letters )?(?:from|out of|of|among) (?:a (?:group|class|team|set|deck|pool) of )?(\d+)(?: [a-z]+)?$/i,
+      build: (m) => (+m[1] <= +m[2] ? out(`binomial(${m[2]}, ${m[1]})`, `unordered choice of ${m[1]} from ${m[2]}: C(${m[2]}, ${m[1]})`) : null) },
+    { id: "arrange-k", re: /^how many ways (?:are there )?(?:can (?:i|you|we|one) |to |of )?(?:arrange|arranging|order|ordering|line up|lining up|rank|ranking|seat|seating) (\d+) (?:of |from |out of )(?:the |a group of )?(\d+)(?: [a-z]+)?(?: in a (?:row|line))?$/i,
+      build: (m) => (+m[1] <= +m[2] ? out(`nPr(${m[2]}, ${m[1]})`, `ordered choice of ${m[1]} from ${m[2]}: P(${m[2]}, ${m[1]})`) : null) },
+    { id: "outcomes", re: /^how many (?:possible |different |total )?(?:outcomes|results)(?: are there| are possible)? (?:when|if|from|for|of) (?:you |i |we )?(?:flip(?:ping)?|toss(?:ing)?|roll(?:ing)?|throw(?:ing)?) (\d+|two|three|four|five|six|seven|eight|nine|ten|a|one) (?:fair )?(coins?|dice|die)$/i,
+      build: (m) => { const n = WN(m[1]); if (!n || n > 60) return null; const die = /di/i.test(m[2]); return out(`${die ? 6 : 2}^${n}`, `${n} ${die ? "dice with 6 faces" : "coins with 2 sides"} each: ${die ? 6 : 2}^${n} equally likely outcomes`); } },
+    { id: "count-multiples", re: /^how many (?:(?:whole |positive |natural )?(?:numbers|integers) )?(?:that are )?(?:multiples of|divisible by) (\d+) (?:are there |are |lie |exist )?(?:between (\d+) and (\d+)|(?:up to|at most|not exceeding|from 1 to|less than or equal to) (\d+)|(?:below|under|less than|smaller than) (\d+))(?: inclusive)?$/i,
+      build: (m) => { const k = +m[1]; if (!k) return null;
+        if (m[2]) return out(`floor(${m[3]}/${k}) - floor((${m[2]} - 1)/${k})`, `multiples of ${k} from ${m[2]} to ${m[3]}: floor(${m[3]}/${k}) - floor((${m[2]} - 1)/${k})`, { notes: [`Counting ${m[2]} and ${m[3]} themselves when they are multiples of ${k}.`] });
+        if (m[4]) return out(`floor(${m[4]}/${k})`, `multiples of ${k} from 1 to ${m[4]}: floor(${m[4]}/${k})`);
+        return out(`floor((${m[5]} - 1)/${k})`, `positive multiples of ${k} below ${m[5]}: floor((${m[5]} - 1)/${k})`); } },
+    { id: "count-parity", re: /^how many (even|odd) (?:numbers|integers|whole numbers) (?:are there )?(?:between (\d+) and (\d+)|(?:up to|from 1 to|at most) (\d+)|(?:below|under|less than) (\d+))(?: inclusive)?$/i,
+      build: (m) => { const even = /even/i.test(m[1]); const cnt = (a, b) => even ? `floor(${b}/2) - floor((${a} - 1)/2)` : `floor((${b} + 1)/2) - floor(${a}/2)`;
+        if (m[2]) return +m[2] <= +m[3] ? out(cnt(m[2], m[3]), `${m[1].toLowerCase()} numbers from ${m[2]} to ${m[3]}`, { notes: [`Counting ${m[2]} and ${m[3]} themselves when they are ${m[1].toLowerCase()}.`] }) : null;
+        if (m[4]) return out(cnt(1, m[4]), `${m[1].toLowerCase()} numbers from 1 to ${m[4]}`);
+        return out(cnt(1, +m[5] - 1), `${m[1].toLowerCase()} numbers from 1 to ${+m[5] - 1}`); } },
+    { id: "count-primes", re: /^how many primes? (?:numbers )?(?:are there |are |exist )?(?:(?:below|under|less than|smaller than) (\d+)|(?:up to|at most|not exceeding|less than or equal to|from 1 to|from 2 to) (\d+)|between (\d+) and (\d+))(?: inclusive)?$/i,
+      build: (m) => { const lim = (v) => +v <= 20000000;
+        if (m[1]) return lim(m[1]) ? out(`primepi(${+m[1] - 1})`, `primes up to ${+m[1] - 1}: pi(${+m[1] - 1})`) : null;
+        if (m[2]) return lim(m[2]) ? out(`primepi(${m[2]})`, `primes up to ${m[2]}: pi(${m[2]})`) : null;
+        return lim(m[4]) && +m[3] <= +m[4] ? out(`primepi(${m[4]}) - primepi(${+m[3] - 1})`, `primes from ${m[3]} to ${m[4]}: pi(${m[4]}) - pi(${+m[3] - 1})`, { notes: [`Counting ${m[3]} and ${m[4]} themselves when prime.`] }) : null; } },
+    { id: "nth-parity", re: /^(?:what is |find )?(?:the )?(\d+)(?:st|nd|rd|th) (odd|even) (?:number|integer|whole number)$/i,
+      build: (m) => (+m[1] >= 1 ? out(/odd/i.test(m[2]) ? `2*${m[1]} - 1` : `2*${m[1]}`, `the ${m[1]}th ${m[2].toLowerCase()} number: ${/odd/i.test(m[2]) ? "2n - 1" : "2n"} with n = ${m[1]}`) : null) },
+    { id: "part-of-unit", re: /^what (fraction|percent|percentage|part|proportion) of (?:a|an|one) ([a-z]+) is (\d+(?:\.\d+)?) ([a-z]+)$|^(\d+(?:\.\d+)?) ([a-z]+) is what (fraction|percent|percentage|part|proportion) of (?:a|an|one) ([a-z]+)$/i,
+      build: (m) => { const [kind, big, n, small] = m[1] ? [m[1], m[2], m[3], m[4]] : [m[7], m[8], m[5], m[6]]; const a = mixedUnit(big), b = mixedUnit(small);
+        if (!a || !b || a[0] !== b[0] || a[1] <= b[1]) return null; const pct = /percent/i.test(kind);
+        return out(pct ? `${n}*${b[1]}/${a[1]}*100` : `${n}*${b[1]}/${a[1]}`, `one ${big} is ${a[1] / b[1]} ${small}: ${n}/${a[1] / b[1]}${pct ? " x 100" : ""}`, { notes: pct ? ["The answer is in percent."] : [] }); } },
+    // circle parts: sector arc length and area, semicircle perimeter, rhombus / kite from diagonals, parallelogram without "with"
+    { id: "sector", re: /^(?:what is |find |calculate )?(?:the )?(arc length|area|perimeter) of (?:a |the )?(?:circular )?(?:(\d+(?:\.\d+)?) ?(?:degrees?|°) )?sector (?:of a circle )?(?:with|of|whose|having) (?:a )?radius(?: of| is| =)? ?(\d+(?:\.\d+)?)(?: (?:and|with) (?:a )?(?:central |sector )?angle(?: of| is| =)? ?(\d+(?:\.\d+)?|pi\/\d+|\d*pi(?:\/\d+)?) ?(degrees?|°|radians?|rad)?)?$/i,
+      build: (m) => { const q = m[1].toLowerCase(), r = m[3]; let th = m[2] || m[4]; if (!th) return null; const rad = /rad/i.test(m[5] || "") || /pi/.test(th); if (!rad && +th > 360) return null;
+        const frac = rad ? `(${th})/(2*pi)` : `${th}/360`; const arc = `${frac}*2*pi*${r}`, area = `${frac}*pi*${r}^2`;
+        return out(q === "area" ? area : q === "arc length" ? arc : `${arc} + 2*${r}`, `${q} of a sector: ${q === "area" ? "(angle/full turn) x pi r^2" : q === "arc length" ? "(angle/full turn) x 2 pi r" : "arc + two radii"} with r = ${r}, angle ${th}${rad ? " rad" : " degrees"}`); } },
+    { id: "semicircle-perimeter", re: /^(?:what is |find |calculate )?(?:the )?perimeter of a semi-?circle (?:with|of|whose) (radius|diameter)(?: of| is| =)? ?(\d+(?:\.\d+)?)$/i,
+      build: (m) => { const r = /diam/i.test(m[1]) ? `(${m[2]}/2)` : m[2]; return out(`pi*${r} + 2*${r}`, "half the circumference plus the diameter: pi r + 2r"); } },
+    { id: "rhombus", re: /^(?:what is |find |calculate )?(?:the )?area of a (rhombus|kite) (?:with|whose|of) diagonals(?: of)? (\d+(?:\.\d+)?) and (\d+(?:\.\d+)?)$/i,
+      build: (m) => out(`${m[2]}*${m[3]}/2`, `${m[1].toLowerCase()} area: half the product of the diagonals, d1 d2 / 2`) },
+    { id: "parallelogram", re: /^(?:what is |find |calculate )?(?:the )?area of a parallelogram (?:with |of |whose )?base(?: of| is| =)? ?(\d+(?:\.\d+)?)(?:,? and| with|,)? (?:a )?height(?: of| is| =)? ?(\d+(?:\.\d+)?)$/i,
+      build: (m) => out(`${m[1]}*${m[2]}`, "parallelogram area base x height") },
+    // finance with a compounding frequency; money answers are shown to the cent
+    { id: "compound-freq", re: new RegExp(String.raw`^(?:what is |find |calculate )?(?:the )?(compound interest|interest earned|interest|amount|future value|final amount|final value|value|balance) (?:on|of|for) (?:an? (?:investment|deposit|loan) of )?${AMT} (?:invested |deposited |borrowed )?at (\d+(?:\.\d+)?) ?(?:%|percent)(?: (?:per year|a year|annual(?:ly)?|interest|per annum|apr))* (?:for|over|after) (\d+(?:\.\d+)?) years?,? compounded (annually|yearly|semi-?annually|quarterly|monthly|weekly|daily)$`, "i"),
+      build: (m) => { const f = { annually: 1, yearly: 1, semiannually: 2, "semi-annually": 2, quarterly: 4, monthly: 12, weekly: 52, daily: 365 }[m[5].toLowerCase()]; const A = f === 1 ? `${m[2]}*(1 + ${m[3]}/100)^${m[4]}` : `${m[2]}*(1 + ${m[3]}/(100*${f}))^(${f}*${m[4]})`;
+        const interest = /interest/i.test(m[1]); return out(interest ? `${A} - ${m[2]}` : A, `A = P (1 + r/n)^(n t) with P = ${m[2]}, r = ${m[3]}%, n = ${f}, t = ${m[4]}${interest ? "; interest = A - P" : ""}`, { places: 2, notes: ["Rounded to the cent in the decimal value."] }); } },
+    { id: "loan-payment", re: new RegExp(String.raw`^(?:what is |find |calculate )?(?:the )?monthly (?:payment|repayment|instal?lment) (?:on|for|of) (?:a |an )?${AMT} (?:loan |mortgage |car loan |home loan )?(?:at |with |with an? (?:interest |apr )?(?:rate )?of )(\d+(?:\.\d+)?) ?(?:%|percent)(?: (?:interest|apr|annual interest|per year|a year|annual))* (?:for|over) (\d+) (years?|months?)$`, "i"),
+      build: (m) => { const n = /month/i.test(m[4]) ? m[3] : `${m[3]}*12`; return +m[2] > 0 ? out(`${m[1]}*(${m[2]}/1200)/(1 - (1 + ${m[2]}/1200)^(-(${n})))`, `amortised loan: payment = P r / (1 - (1 + r)^-n) with P = ${m[1]}, monthly rate r = ${m[2]}%/12, n = ${n} months`, { places: 2, notes: ["Fixed monthly payments with interest compounded monthly; rounded to the cent in the decimal value."] }) : null; } },
+    { id: "annuity-fv", re: new RegExp(String.raw`^(?:what is |find |calculate )?(?:the )?future value of (?:saving |investing |depositing |paying |putting away )?${AMT} (?:a|per|each|every) month (?:at|earning|with) (\d+(?:\.\d+)?) ?(?:%|percent)(?: (?:per year|a year|annual(?:ly)?|interest|per annum))* (?:for|over) (\d+) years?$`, "i"),
+      build: (m) => out(`${m[1]}*((1 + ${m[2]}/1200)^(12*${m[3]}) - 1)/(${m[2]}/1200)`, `ordinary annuity: FV = PMT ((1 + r)^n - 1)/r with PMT = ${m[1]}, monthly r = ${m[2]}%/12, n = 12 x ${m[3]}`, { places: 2, notes: ["Deposits at the end of each month, interest compounded monthly; rounded to the cent in the decimal value."] }) },
+    { id: "present-value", re: new RegExp(String.raw`^how much (?:money )?(?:do (?:i|you|we) need to |must (?:i|you|we) |should (?:i|you|we) |would (?:i|you|we) have to )?(?:invest|deposit|save|put in|put away|put aside) (?:now |today )?(?:at|earning|with) (\d+(?:\.\d+)?) ?(?:%|percent)(?: (?:per year|a year|annual(?:ly)?|interest|per annum|compounded annually))* to (?:have|get|reach|end up with|grow to|accumulate) ${AMT} (?:in|after) (\d+(?:\.\d+)?) years?$`, "i"),
+      build: (m) => out(`${m[2]}/(1 + ${m[1]}/100)^${m[3]}`, `present value: PV = FV / (1 + r)^t with FV = ${m[2]}, r = ${m[1]}%, t = ${m[3]}`, { places: 2, notes: ["Interest compounded once a year; rounded to the cent in the decimal value."] }) },
   ];
 }
 // "2 + 5 + 8 + ... + 32": the listed terms fix the pattern (arithmetic or geometric), the last term fixes the count
@@ -320,7 +371,7 @@ function finiteSeries(t, L, out) {
   return null;
 }
 // mixed units of one dimension: "3 hours 25 minutes in minutes", "5 feet 10 inches in inches"
-const MIXED = { hour: ["time", 3600], hr: ["time", 3600], hrs: ["time", 3600], h: ["time", 3600], minute: ["time", 60], min: ["time", 60], second: ["time", 1], sec: ["time", 1], s: ["time", 1],
+const MIXED = { week: ["time", 604800], wk: ["time", 604800], day: ["time", 86400], hour: ["time", 3600], hr: ["time", 3600], hrs: ["time", 3600], h: ["time", 3600], minute: ["time", 60], min: ["time", 60], second: ["time", 1], sec: ["time", 1], s: ["time", 1],
   foot: ["imperial", 12], feet: ["imperial", 12], ft: ["imperial", 12], inch: ["imperial", 1], inche: ["imperial", 1], in: ["imperial", 1], yard: ["imperial", 36], yd: ["imperial", 36], yds: ["imperial", 36],
   pound: ["weight", 16], lb: ["weight", 16], lbs: ["weight", 16], ounce: ["weight", 1], oz: ["weight", 1],
   kilometer: ["metric", 100000], kilometre: ["metric", 100000], km: ["metric", 100000], meter: ["metric", 100], metre: ["metric", 100], m: ["metric", 100], centimeter: ["metric", 1], centimetre: ["metric", 1], cm: ["metric", 1] };

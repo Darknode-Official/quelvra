@@ -8,7 +8,7 @@
 //
 //   catalan(n)  fibonacci(n) / fib(n)  lucas(n)  subfactorial(n) / derangements(n)
 //   multinomial(k1, ..., km)  stirling(n, k) (second kind)  bell(n)  nthprime(n)
-//   divisorsum(n)  numdivisors(n)  modinv(a, m)  powmod(a, b, m)
+//   primepi(n) (primes <= n)  divisorsum(n)  numdivisors(n)  modinv(a, m)  powmod(a, b, m)
 //   binompdf(n, p, k)  binomcdf(n, p, k)  geompdf(p, k)  geomcdf(p, k)  (trials: k >= 1)
 //   poissonpdf(lambda, k)  poissoncdf(lambda, k)  hypergeompdf(N, K, n, k)
 //   normalpdf(x[, mu, sigma])  normalcdf(a, b[, mu, sigma])  (as erf expressions)  zscore(x, mu, sigma)
@@ -17,7 +17,7 @@ import * as N from "./num.js";
 import * as NT from "./numtheory.js";
 
 export const DISCRETE_NAMES = ["catalan", "fibonacci", "fib", "lucas", "subfactorial", "derangements", "multinomial", "stirling", "bell",
-  "nthprime", "divisorsum", "numdivisors", "modinv", "powmod", "binompdf", "binomcdf", "geompdf", "geomcdf",
+  "nthprime", "primepi", "divisorsum", "numdivisors", "modinv", "powmod", "binompdf", "binomcdf", "geompdf", "geomcdf",
   "poissonpdf", "poissoncdf", "hypergeompdf", "normalpdf", "normalcdf", "zscore", "round"];
 
 const isInt = (t) => t && t.k === "num" && t.v.d === 1n;
@@ -30,6 +30,18 @@ function fibPair(n) { // [F(n), F(n+1)] by fast doubling
   const [a, b] = fibPair(n >> 1n);
   const c = a * (2n * b - a), d = a * a + b * b;
   return n & 1n ? [d, c + d] : [c, d];
+}
+// number of primes <= n by the sieve of Eratosthenes
+function sieveCount(n) {
+  if (n < 2) return 0n;
+  const comp = new Uint8Array(n + 1);
+  let count = 0;
+  for (let i = 2; i <= n; i++) {
+    if (comp[i]) continue;
+    count++;
+    for (let j = i * i; j <= n; j += i) comp[j] = 1;
+  }
+  return BigInt(count);
 }
 function sieveNth(n) {
   // nth prime: bound p_n < n (ln n + ln ln n) for n >= 6
@@ -104,6 +116,10 @@ export function evalDiscrete(name, args, T) {
       if (!isInt(a) || big(a) < 1n || big(a) > 300000n) return null;
       const p = sieveNth(big(a));
       return p === null ? null : num(p);
+    }
+    case "primepi": {
+      if (!isInt(a) || big(a) < 0n || big(a) > 20000000n) return null;
+      return num(sieveCount(Number(big(a))));
     }
     case "divisorsum": case "numdivisors": {
       if (!isInt(a) || big(a) < 1n || big(a) > 10n ** 24n) return null;
