@@ -40,7 +40,8 @@ setApproxHook((tree, digits) => {
 // everyday unit questions as a plain conversion, used only to try the units engine:
 // "how many seconds in an hour" -> "1 hour to seconds", "what is 100 fahrenheit in celsius" -> "100 fahrenheit in celsius"
 function unitQuestion(text) {
-  const t = text.trim().replace(/[?!.]+$/, "").trim();
+  // "5 feet 4 inches" is one length: 5 x 12 + 4 inches
+  const t = text.trim().replace(/[?!.]+$/, "").trim().replace(/\b(\d+) ?(?:feet|foot|ft) (?:and )?(\d+(?:\.\d+)?) ?(?:inches|inch|in)\b/gi, (_, f, i) => `${+f * 12 + +i} inches`);
   let m = /^how many ([a-z°][a-z° ]*?) (?:are )?(?:there )?in (?:a|an|one|(\d+(?:\.\d+)?)) ([a-z°][a-z°/ ]*?)$/i.exec(t);
   // a calendar year or month is not a fixed number of days, so "how many days in a year" is left alone (365.25 would mislead)
   if (m) return /\b(?:years?|yrs?|months?|decades?|centur(?:y|ies))\b/i.test(m[1] + " " + m[3]) ? text : `${m[2] || 1} ${m[3]} to ${m[1]}`;

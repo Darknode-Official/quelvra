@@ -194,6 +194,20 @@ export const CASES = [
   ["r8-base", "octal 17 to decimal", 15], ["r8-base", "hexadecimal ff to decimal", 255], ["r8-base", "MCMXCIV in numbers", 1994],
   ["r8-rate", "speed if 150 km in 2 hours", 75], ["r8-rate", "time to travel 300 km at 60 km/h", 5], ["r8-rate", "distance at 60 km/h for 3 hours", 180],
   ["r8-rate", "distance at 60 km/h for 30 minutes", 30], ["r8-rate", "distance covered at 5 m/s in 12 seconds", 60],
+  // round 9
+  ["r9-unit", "how many centimeters in 5 feet 4 inches", 162.56], ["r9-unit", "what is 5 feet 10 inches in cm", 177.8], ["r9-unit", "180 cm in feet and inches", { re: /10\.866/ }],
+  ["r9-geo", "other leg if hypotenuse is 13 and one leg is 5", 12], ["r9-geo", "is 7, 24, 25 a right triangle", { re: /true/ }], ["r9-geo", "is 5, 6, 7 a right triangle", { re: /false/ }], ["r9-geo", "pythagorean triple check 8 15 17", { re: /true/ }],
+  ["r9-geo", "how many sides does a polygon with interior angles of 150 degrees have", 12], ["r9-geo", "how many sides does a regular polygon with exterior angle 40 have", 9],
+  ["r9-geo", "angle whose sine is 0.5", 30], ["r9-geo", "arctan of 1 in degrees", 45], ["r9-geo", "angle whose tangent is 1", 45],
+  ["r9-alg", "what x makes 2x + 3 equal to 11", 4], ["r9-alg", "simultaneous equations x + y = 10 and x - y = 2", { re: /x = 6.*y = 4/ }],
+  ["r9-prob", "probability of two heads in two coin flips", 1 / 4], ["r9-prob", "probability of exactly 3 heads in 5 flips", 5 / 16], ["r9-prob", "probability of at least one head in 3 flips", 7 / 8],
+  ["r9-prob", "probability of at least 2 heads in 4 flips", 11 / 16], ["r9-prob", "probability of at most 1 head in 3 tosses", 1 / 2], ["r9-prob", "probability of no tails in 3 tosses", 1 / 8], ["r9-prob", "probability of at least one six in 4 rolls", 671 / 1296],
+  ["r9-ser", "sum of squares from 1 to 10", 385], ["r9-ser", "sum of the cubes of the first 5 numbers", 225],
+  ["r9-pct", "what number is 40% of 250", 100], ["r9-pct", "increase 50 by 20% then decrease by 20%", 48], ["r9-pct", "if 3 pens cost 4.50, what is the cost of 10 pens", 15],
+  ["r9-rate", "speed of a car that goes 120 miles in 2.5 hours", 48], ["r9-arith", "7/9 rounded to 3 decimal places", 0.778],
+  ["r9-nt", "largest prime factor of 600851475143", 6857], ["r9-nt", "smallest prime factor of 91", 7], ["r9-nt", "largest prime factor of 97", 97],
+  ["r9-nt", "what is 1010 + 111 in binary", { re: /10001/ }], ["r9-nt", "how many zeros in 100 factorial", 24], ["r9-nt", "how many trailing zeros does 25! have", 6],
+  ["r9-lin", "matrix determinant [[1,2],[3,4]]", -2],
   ["r8-word", "if a can do a job in 6 hours and b can do it in 3 hours, how long together", 2],
   ["r8-word", "a pipe fills a tank in 6 hours and another fills it in 3 hours, how long together", 2],
   ["r8-word", "john is twice as old as mary and the sum of their ages is 36, how old is mary", { re: /m = 12/ }],
@@ -239,4 +253,10 @@ export const TRAPS = [
   "digit sum of 2^30000", // beyond the exact-power cap
   "perimeter of a square with perimeter 20", // asks for what was given
   "binary 102 to decimal", // 2 is not a binary digit
+  "other leg if hypotenuse is 5 and one leg is 13", // the leg is longer than the hypotenuse
+  "how many sides does a polygon with interior angles of 100 degrees have", // 360/80 is not a whole number: no such regular polygon
+  "largest prime factor of 1", // 1 has no prime factors
+  "probability of 5 heads in 3 flips", // more heads than flips
+  "is 0, 0, 0 a right triangle", // no triangle has zero sides
+  "sum of squares from 10 to 1", // the range runs backwards
 ];
