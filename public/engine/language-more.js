@@ -99,7 +99,7 @@ function everydayPatterns({ E, out, WN }) {
       build: (m) => out(`${m[1]}*(1 - ${m[2]}/100)`, `${m[2]}% off ${m[1]}: ${m[1]} x (1 - ${m[2]}/100)`) },
     { id: "percent-off", re: new RegExp(String.raw`^\$?${WNUM} (?:with |at |minus )${WNUM} ?(?:%|percent) (?:off|discount)$`, "i"),
       build: (m) => out(`${m[1]}*(1 - ${m[2]}/100)`, `${m[2]}% off ${m[1]}: ${m[1]} x (1 - ${m[2]}/100)`) },
-    { id: "percent-off", re: new RegExp(String.raw`^(?:what is |what's )?${WNUM} ?(?:%|percent) (?:off|discount(?:ed)?(?: (?:from|on|off))?) \$?${WNUM}$`, "i"),
+    { id: "percent-off", re: new RegExp(String.raw`^(?:what is |what's )?${WNUM} ?(?:%|percent) (?:off(?: of)?|discount(?:ed)?(?: (?:from|on|off))?) \$?${WNUM}$`, "i"),
       build: (m) => out(`${m[2]}*(1 - ${m[1]}/100)`, `${m[1]}% off ${m[2]}: ${m[2]} x (1 - ${m[1]}/100)`) },
     // "what number added to 15 gives 42"
     { id: "what-number", re: new RegExp(String.raw`^what number (added to|plus|subtracted from|multiplied by|times|divided by) ${WNUM} (?:gives|makes|equals|is|results in) ${WNUM}$`, "i"),
@@ -187,8 +187,8 @@ function everydayPatterns({ E, out, WN }) {
     { id: "digit-sum", re: /^(?:what is |find )?(?:the )?sum of (?:the |its )?digits (?:of|in) (\d+)$/i, build: (m) => out(m[1].split("").join(" + "), `digits of ${m[1]}: ${m[1].split("").join(" + ")}`) },
     { id: "digit-count", re: /^how many digits (?:are )?(?:there )?(?:in|does) (\d+) ?\^ ?(\d+)(?: have)?$/i,
       build: (m) => { const a = BigInt(m[1]), b = +m[2]; if (b > 20000 || a < 1n) return null; const d = (a ** BigInt(b)).toString().length; return out(String(d), `${m[1]}^${m[2]} has ${d} digits (computed exactly)`); } },
-    { id: "roman", re: /^(?:what is |convert )?(?:the )?(?:roman numeral )?([mdclxvi]+)(?: in roman numerals?| roman numerals?)?(?: (?:to|in|as) (?:a )?(?:number|decimal|arabic numerals?))?$/i,
-      build: (m) => { if (!/roman/i.test(m[0]) && !/(?:to|in|as) (?:a )?(?:number|decimal|arabic)/i.test(m[0])) return null; const s = m[1].toLowerCase();
+    { id: "roman", re: /^(?:what is |convert )?(?:the )?(?:roman numeral )?([mdclxvi]+)(?: in roman numerals?| roman numerals?)?(?: (?:to|in|as) (?:a )?(?:numbers?|decimal|arabic numerals?))?$/i,
+      build: (m) => { if (!/roman/i.test(m[0]) && !/(?:to|in|as) (?:a )?(?:numbers?|decimal|arabic)/i.test(m[0])) return null; const s = m[1].toLowerCase();
         if (!/^m{0,4}(cm|cd|d?c{0,3})(xc|xl|l?x{0,3})(ix|iv|v?i{0,3})$/.test(s)) return null;
         const parts = []; for (let i = 0; i < s.length; i++) { const v = ROMAN[s[i]], nx = ROMAN[s[i + 1]] || 0; if (v < nx) { parts.push(`(${nx} - ${v})`); i++; } else parts.push(String(v)); }
         return out(parts.join(" + "), `${m[1].toUpperCase()} = ${parts.join(" + ")}`); } },
@@ -357,6 +357,81 @@ function everydayPatterns({ E, out, WN }) {
       build: (m) => out(`${m[1]}*((1 + ${m[2]}/1200)^(12*${m[3]}) - 1)/(${m[2]}/1200)`, `ordinary annuity: FV = PMT ((1 + r)^n - 1)/r with PMT = ${m[1]}, monthly r = ${m[2]}%/12, n = 12 x ${m[3]}`, { places: 2, notes: ["Deposits at the end of each month, interest compounded monthly; rounded to the cent in the decimal value."] }) },
     { id: "present-value", re: new RegExp(String.raw`^how much (?:money )?(?:do (?:i|you|we) need to |must (?:i|you|we) |should (?:i|you|we) |would (?:i|you|we) have to )?(?:invest|deposit|save|put in|put away|put aside) (?:now |today )?(?:at|earning|with) (\d+(?:\.\d+)?) ?(?:%|percent)(?: (?:per year|a year|annual(?:ly)?|interest|per annum|compounded annually))* to (?:have|get|reach|end up with|grow to|accumulate) ${AMT} (?:in|after) (\d+(?:\.\d+)?) years?$`, "i"),
       build: (m) => out(`${m[2]}/(1 + ${m[1]}/100)^${m[3]}`, `present value: PV = FV / (1 + r)^t with FV = ${m[2]}, r = ${m[1]}%, t = ${m[3]}`, { places: 2, notes: ["Interest compounded once a year; rounded to the cent in the decimal value."] }) },
+    // ---- round 8: percent verbs, parity series, prime products, roots and logs by name, hands of cards, degree/radian
+    //      conversions, squares from area, compound growth said plainly, bases by name, perfect squares, triangular
+    //      numbers, digit tricks (each one is written as arithmetic the engine then evaluates and checks) ----
+    { id: "speed-plain", re: /^(?:what is |what's |find |calculate )?(?:the |my |its |his |her |their )?(?:average )?speed(?: (?:if|when|for|of|to (?:travel|cover|drive|go|run|walk|cycle|fly)|travelling|traveling|covering|driving|going))?:? ?(?:i |you |we |a car |a train |a bus |a bike |a plane |a runner |a cyclist |it |someone |he |she |they )?(?:travel(?:s|led|ed)? |cover(?:s|ed)? |drive(?:s)? |drove |go(?:es)? |went |run(?:s)? |ran |walk(?:s|ed)? |cycle(?:s|d)? |fl(?:y|ies|ew) )?(\d+(?:\.\d+)?) ?(km|kilometers?|kilometres?|miles?|mi|m|meters?|metres?|feet|ft) in (\d+(?:\.\d+)?) ?(hours?|hrs?|h|minutes?|mins?|min|seconds?|secs?|s)$/i,
+      build: (m) => { if (!(+m[3] > 0)) return null; const du = /^(?:km|kilomet)/i.test(m[2]) ? "km" : /^mi/i.test(m[2]) ? "miles" : /^(?:m|met)/i.test(m[2]) ? "m" : "ft"; const tu = /^h/i.test(m[4]) ? "hour" : /^m/i.test(m[4]) ? "minute" : "second";
+        return out(`${m[1]}/${m[3]}`, `speed = distance / time = ${m[1]} ${du} / ${m[3]} ${tu}${+m[3] === 1 ? "" : "s"}`, { notes: [`The answer is in ${du} per ${tu}.`] }); } },
+    { id: "time-plain", re: /^(?:what is |what's |find |calculate |how long is )?(?:the )?(?:travel |journey |driving )?time (?:needed |taken |required |it takes |to take )?(?:to (?:travel|cover|drive|go|run|walk|cycle|fly|complete)|for|over) (\d+(?:\.\d+)?) ?(km|kilometers?|kilometres?|miles?|mi|m|meters?|metres?|feet|ft) at (\d+(?:\.\d+)?) ?(km\/h|kph|kmh|km\/hr|km per hour|kilometers per hour|kilometres per hour|mph|mi\/h|miles per hour|miles an hour|m\/s|meters per second|metres per second|ft\/s|feet per second)$/i,
+      build: (m) => { const du = /^(?:km|kilomet)/i.test(m[2]) ? "km" : /^mi/i.test(m[2]) ? "miles" : /^(?:m|met)/i.test(m[2]) ? "m" : "ft"; const r = m[4].toLowerCase();
+        const ru = /^(?:km|kilomet)/.test(r) ? "km" : /^(?:mph|mi|miles)/.test(r) ? "miles" : /^(?:m\/s|met)/.test(r) ? "m" : "ft"; if (ru !== du || !(+m[3] > 0)) return null; const tu = /(?:h|hour)$/.test(r) ? "hour" : "second";
+        return out(`${m[1]}/${m[3]}`, `time = distance / speed = ${m[1]} ${du} / ${m[3]} ${du} per ${tu}`, { notes: [`The answer is in ${tu}s.`] }); } },
+    { id: "distance-plain", re: /^(?:what is |what's |find |calculate |how far is )?(?:the )?distance (?:covered |travelled |traveled |driven |gone )?(?:at|for|in|over|going|travelling|traveling|driving at|moving at) (\d+(?:\.\d+)?) ?(km\/h|kph|kmh|km\/hr|km per hour|kilometers per hour|kilometres per hour|mph|mi\/h|miles per hour|miles an hour|m\/s|meters per second|metres per second|ft\/s|feet per second) (?:for|in|over|during) (\d+(?:\.\d+)?) ?(hours?|hrs?|h|minutes?|mins?|min|seconds?|secs?|s)$/i,
+      build: (m) => { const r = m[2].toLowerCase(); const ru = /^(?:km|kilomet)/.test(r) ? "km" : /^(?:mph|mi|miles)/.test(r) ? "miles" : /^(?:m\/s|met)/.test(r) ? "m" : "ft"; const rt = /(?:h|hour)$/.test(r) ? "hour" : "second";
+        const tu = /^h/i.test(m[4]) ? "hour" : /^m/i.test(m[4]) ? "minute" : "second";
+        // the time is converted into the speed's time unit first (30 minutes at km/h is half an hour)
+        const conv = tu === rt ? m[3] : rt === "hour" ? `(${m[3]}/${tu === "minute" ? 60 : 3600})` : tu === "minute" ? `(${m[3]}*60)` : `(${m[3]}*3600)`;
+        return out(`${m[1]}*${conv}`, `distance = speed x time = ${m[1]} ${ru} per ${rt} x ${m[3]} ${tu}${+m[3] === 1 ? "" : "s"}${conv === m[3] ? "" : ` = ${m[1]} x ${conv} ${rt}s`}`, { notes: [`The answer is in ${ru}.`] }); } },
+    { id: "percent-verb", re: new RegExp(String.raw`^(?:what is |what's |find )?\$?${WNUM} (increased|raised|marked up|decreased|reduced|lowered|marked down|discounted|cut) by ${WNUM} ?(?:%|percent|per cent)$`, "i"),
+      build: (m) => { const up = /^(?:increased|raised|marked up)$/i.test(m[2]); return out(`${m[1]}*(1 ${up ? "+" : "-"} ${m[3]}/100)`, `${m[1]} ${up ? "increased" : "decreased"} by ${m[3]}%: ${m[1]} x (1 ${up ? "+" : "-"} ${m[3]}/100)`); } },
+    { id: "parity-series", re: /^(?:what is |find |calculate )?(?:the )?sum of (?:all )?(?:the )?(even|odd) (?:numbers|integers|whole numbers) (?:from|between) (\d+) (?:to|and|through|up to) (\d+)(?: inclusive)?$/i,
+      build: (m) => { const odd = /odd/i.test(m[1]); let a = +m[2], b = +m[3]; if (a > b || b > 1e9) return null;
+        if ((a % 2 === 1) !== odd) a++; if ((b % 2 === 1) !== odd) b--; if (a > b) return null; const n = (b - a) / 2 + 1;
+        return out(`sum(${a} + 2k, k, 0, ${n - 1})`, `${m[1].toLowerCase()} numbers ${a}, ${a + 2}, ..., ${b}: ${n} terms of an arithmetic series`); } },
+    { id: "parity-series", re: /^(?:what is |find |calculate )?(?:the )?sum of (?:the )?first (\d+) (even|odd) (?:numbers|integers|whole numbers|positive integers|natural numbers)$/i,
+      build: (m) => { const n = +m[1]; if (!(n >= 1 && n <= 1e9)) return null; const odd = /odd/i.test(m[2]);
+        return out(odd ? `sum(2k - 1, k, 1, ${n})` : `sum(2k, k, 1, ${n})`, `the first ${n} ${odd ? "odd" : "even"} numbers ${odd ? "1, 3, 5, ..." : "2, 4, 6, ..."}: sum of ${odd ? "2k - 1" : "2k"} for k = 1..${n}`); } },
+    { id: "first-primes", re: /^(?:what is |find |calculate )?(?:the )?(sum|product) of (?:the )?first (\d+) primes?(?: numbers?)?$/i,
+      build: (m) => { const n = +m[2]; if (!(n >= 1 && n <= 60)) return null; const ps = []; for (let k = 2; ps.length < n; k++) if (isPrimeN(k)) ps.push(k);
+        const op = /sum/i.test(m[1]) ? " + " : "*"; return out(ps.join(op), `the first ${n} primes are ${ps.join(", ")}; their ${m[1].toLowerCase()} is ${ps.join(op === "*" ? " x " : " + ")}`); } },
+    { id: "is-perfect", re: /^is (\d+) (?:a )?perfect(?: number)?$/i,
+      build: (m) => { const n = +m[1]; if (!(n >= 1 && n <= 1e12)) return null; return out(`divisorsum(${n}) - ${n} = ${n}`, `${n} is perfect when its proper divisors (all divisors except ${n} itself) add up to ${n}`, { goal: "evaluate" }); } },
+    { id: "is-palindrome", re: /^is (\d+) (?:a )?(?:numeric |numerical |number )?palindrome(?: number| numeral)?$/i,
+      build: (m) => { const s = m[1]; if (s.length > 60) return null; const r = [...s].reverse().join(""); return out(`${s} = ${r}`, `${s} read backwards is ${r}; a palindrome reads the same both ways`, { goal: "evaluate" }); } },
+    { id: "nth-root", re: /^(?:what is |what's |find |calculate |compute )?(?:the )?(\d+)(?:st|nd|rd|th)[- ]root of (.+)$/i,
+      build: (m) => { const n = +m[1], x = E(m[2]); if (!(n >= 2 && n <= 1000) || !x) return null; return out(`root(${x}, ${n})`, `the ${m[1]}${{ 1: "st", 2: "nd", 3: "rd" }[m[1] % 10 === 1 && m[1] % 100 !== 11 ? 1 : m[1] % 10 === 2 && m[1] % 100 !== 12 ? 2 : m[1] % 10 === 3 && m[1] % 100 !== 13 ? 3 : 0] || "th"} root of ${x} (${x}^(1/${n}))`); } },
+    { id: "nth-root", re: /^(?:what is |what's |find |calculate |compute )?(?:the )?(fourth|fifth|sixth|seventh|eighth|ninth|tenth)[- ]root of (.+)$/i,
+      build: (m) => { const n = { fourth: 4, fifth: 5, sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10 }[m[1].toLowerCase()], x = E(m[2]); if (!x) return null; return out(`root(${x}, ${n})`, `the ${m[1].toLowerCase()} root of ${x} (${x}^(1/${n}))`); } },
+    { id: "log-named-base", re: /^(?:what is |what's |find |calculate |compute )?(?:the )?log[_ ]?(\d+) (?:of )?(.+)$/i,
+      build: (m) => { const b = +m[1], x = E(m[2]); if (!(b >= 2) || !x) return null; return out(`log(${b}, ${x})`, `log base ${b} of ${x}`); } },
+    { id: "card-hands", re: /^how many (?:different |distinct |possible )?(\d+)[- ]card hands (?:can be dealt |can you (?:be dealt|make|draw|get) |are there |are possible |can be drawn |can be made )?(?:from|in|out of|using|with) (?:a |an )?(?:standard |ordinary |regular |full |single )?(?:deck of )?(\d+)(?:[- ]card)?(?: cards| deck| card deck| playing cards)?$/i,
+      build: (m) => { const k = +m[1], n = +m[2]; if (!(k >= 1 && n >= k && n <= 1000)) return null; return out(`binomial(${n}, ${k})`, `unordered hands: choose ${k} of ${n} cards, C(${n}, ${k})`); } },
+    { id: "to-degrees", re: /^(?:convert |what is |what's |express |write |give )?(.+?)(?: rad(?:ian)?s?)? (?:in|to|as|into) degrees$/i,
+      build: (m) => { const x = E(m[1]); if (!x || /[a-z]/i.test(x.replace(/\b(?:pi|e|sqrt|cbrt|sin|cos|tan|asin|acos|atan|arcsin|arccos|arctan|ln|log|abs|root|exp)\b/gi, "")) || /\bdegrees?\b|\bdeg\b|°/i.test(m[1])) return null;
+        return out(`(${x})*180/pi`, `${x} radians x 180/pi`, { notes: ["The answer is in degrees."] }); } },
+    { id: "to-radians", re: /^(?:convert |what is |what's |express |write |give )?(.+?) (?:degrees?|deg|°) (?:in|to|as|into) rad(?:ian)?s?$/i,
+      build: (m) => { const x = E(m[1]); if (!x || /[a-z]/i.test(x.replace(/\b(?:sqrt|cbrt)\b/gi, ""))) return null; return out(`(${x})*pi/180`, `${x} degrees x pi/180`, { notes: ["The answer is in radians."] }); } },
+    { id: "square-from", re: /^(?:what is |what's |find |calculate )?(?:the )?(side|side length|perimeter|area|diagonal) of a square (?:with|whose|of|that has|having) (?:an? )?(area|perimeter|side|side length|diagonal)(?: is| of| equal to| equals| =)? \$?(\d+(?:\.\d+)?)(?: (?:square )?(?:cm|m|mm|km|in|inches|ft|feet|units?|meters?|metres?))?(?: squared)?$/i,
+      build: (m) => { const want = m[1].toLowerCase().replace(" length", ""), from = m[2].toLowerCase().replace(" length", ""), v = m[3]; if (want === from) return null;
+        const side = { side: v, perimeter: `${v}/4`, area: `sqrt(${v})`, diagonal: `${v}/sqrt(2)` }[from];
+        const outOf = { side: (s) => s, perimeter: (s) => `4*(${s})`, area: (s) => `(${s})^2`, diagonal: (s) => `(${s})*sqrt(2)` }[want];
+        return out(outOf(side), `side = ${side} (from the ${from} ${v})${want === "side" ? "" : `; ${want} = ${outOf("side")}`}`); } },
+    { id: "compound-plain", re: new RegExp(String.raw`^(?:what is |what's |how much is |find )?(?:the )?(?:value of |amount of |worth of )?${AMT} (?:invested |deposited |saved |put away |placed )?at (\d+(?:\.\d+)?) ?(?:%|percent)(?: (?:interest|per year|a year|annual(?:ly)?|per annum|apr))*,? (?:compounded (annually|yearly|semi-?annually|quarterly|monthly|weekly|daily) (?:for|over|after) (\d+(?:\.\d+)?) years?|(?:for|over|after) (\d+(?:\.\d+)?) years? compounded (annually|yearly|semi-?annually|quarterly|monthly|weekly|daily))$`, "i"),
+      build: (m) => { const f = { annually: 1, yearly: 1, semiannually: 2, "semi-annually": 2, quarterly: 4, monthly: 12, weekly: 52, daily: 365 }[(m[3] || m[6]).toLowerCase()], t = m[4] || m[5]; if (!f) return null;
+        return out(f === 1 ? `${m[1]}*(1 + ${m[2]}/100)^${t}` : `${m[1]}*(1 + ${m[2]}/(100*${f}))^(${f}*${t})`, `A = P (1 + r/n)^(n t) with P = ${m[1]}, r = ${m[2]}%, n = ${f}, t = ${t}`, { places: 2, notes: ["Rounded to the cent in the decimal value."] }); } },
+    { id: "base-by-name", re: /^(?:what is |what's |find |give |show )?(?:the )?(binary|octal|hex|hexadecimal|base[- ]?(\d+)) (?:form|representation|version|value|equivalent|notation|expansion)? ?(?:of|for) (\d+)$/i,
+      build: (m) => { const b = m[2] ? +m[2] : { binary: 2, octal: 8, hex: 16, hexadecimal: 16 }[m[1].toLowerCase()]; if (!(b >= 2 && b <= 36) || m[3].length > 60) return null; return out(`tobase(${m[3]}, ${b})`, `${m[3]} written in base ${b}`); } },
+    { id: "base-by-name", re: /^(?:convert |what is |what's )?(?:the )?(binary|octal|hex|hexadecimal) (?:number |value )?([0-9a-f]+) (?:to|in|into|as) (?:decimal|denary|base[- ]?10|a (?:decimal )?number)$/i,
+      build: (m) => { const b = { binary: 2, octal: 8, hex: 16, hexadecimal: 16 }[m[1].toLowerCase()]; const digits = m[2].toLowerCase(); if ([...digits].some((c) => !(parseInt(c, 36) < b)) || digits.length > 60) return null;
+        const vals = [...digits].map((c) => parseInt(c, 36)); return out(vals.map((d, i) => `${d}*${b}^${vals.length - 1 - i}`).join(" + "), `positional value of ${digits} in base ${b}`); } },
+    { id: "next-square", re: /^(?:what is |what's |find )?(?:the )?(next|smallest|first|largest|biggest|greatest|previous|last|nearest|closest) perfect (square|cube)(?: number)? (after|above|greater than|bigger than|larger than|more than|over|before|below|less than|smaller than|under|to) (\d+)$/i,
+      build: (m) => { const n = +m[1 + 3], cube = /cube/i.test(m[2]); if (!(n >= 0 && n <= 1e15)) return null; const p = cube ? 3 : 2, rt = (v) => Math.round(Math.pow(v, 1 / p));
+        const near = /nearest|closest/i.test(m[1]) || /^to$/i.test(m[3]); const up = /next|smallest|first/i.test(m[1]) || /after|above|greater|bigger|larger|more|over/i.test(m[3]);
+        if (near !== /^to$/i.test(m[3])) return null; let k;
+        if (near) { let lo = rt(n); while (lo ** p > n) lo--; while ((lo + 1) ** p <= n) lo++; k = n - lo ** p <= (lo + 1) ** p - n ? lo : lo + 1; }
+        else if (up) { k = rt(n); while (k ** p <= n) k++; while ((k - 1) ** p > n) k--; }
+        else { k = rt(n); while (k ** p >= n) k--; while ((k + 1) ** p < n) k++; if (k < 0) return null; }
+        return out(`${k}^${p}`, `${k}^${p} = ${k ** p} is the ${near ? "nearest" : up ? "smallest" : "largest"} perfect ${cube ? "cube" : "square"} ${near ? "to" : up ? "above" : "below"} ${n}${near ? "" : ` (${up ? k - 1 : k + 1}^${p} = ${(up ? k - 1 : k + 1) ** p} is ${up ? "not above" : "not below"} it)`}`); } },
+    { id: "triangular", re: /^(?:what is |what's |find )?(?:the )?(\d+)(?:st|nd|rd|th) triangular number$/i,
+      build: (m) => { const n = +m[1]; return n >= 1 && n <= 1e12 ? out(`${n}*(${n} + 1)/2`, `T(${n}) = 1 + 2 + ... + ${n} = n(n + 1)/2`) : null; } },
+    { id: "digit-sum", re: /^(?:what is |what's |find )?(?:the )?(?:digit sum|digital sum|sum of (?:the |its )?digits) (?:of|in) (\d+)(?:\^| to the (?:power of )?| \*\* )(\d+)$/i,
+      build: (m) => { const a = BigInt(m[1]), b = +m[2]; if (b > 20000 || a < 0n) return null; const d = (a ** BigInt(b)).toString(); if (d.length > 400) return out(String([...d].reduce((s, c) => s + +c, 0)), `${m[1]}^${m[2]} has ${d.length} digits; their sum was added up exactly`, { notes: ["Computed exactly from the full power."] });
+        return out(d.split("").join(" + "), `${m[1]}^${m[2]} = ${d}; add its digits`); } },
+    { id: "digit-sum", re: /^(?:what is |what's |find )?(?:the )?(?:digit sum|digital sum) of (\d+)$/i, build: (m) => out(m[1].split("").join(" + "), `digits of ${m[1]}: ${m[1].split("").join(" + ")}`) },
+    { id: "reverse-digits", re: /^(?:what is |what's |find )?(?:reverse (?:the digits of )?|(?:the )?(?:digits of )?)?(\d+) (?:reversed|backwards|with (?:its|the) digits reversed)$|^reverse (?:the )?(?:digits (?:of|in) )?(\d+)$/i,
+      build: (m) => { const s = (m[1] || m[2]); if (s.length > 60) return null; const r = [...s].reverse().join(""); const terms = [...r].map((c, i) => (i === r.length - 1 ? c : `${c}*10^${r.length - 1 - i}`));
+        return out(terms.join(" + "), `${s} reversed is ${r}: ${terms.join(" + ")}`, { notes: /0$/.test(s) ? ["Trailing zeros of the original become leading zeros and drop away."] : [] }); } },
   ];
 }
 // "2 + 5 + 8 + ... + 32": the listed terms fix the pattern (arithmetic or geometric), the last term fixes the count
@@ -431,6 +506,9 @@ export function morePatterns({ expr, mathOf, LEAD, re }) {
         return out(subst(body, m[2], m[3]), `${body} with ${m[2]} = ${m[3]}`); } },
     { id: "fn-value", re: /^(?:if |given |given that |let |suppose )?([a-z])\(([a-z])\) ?= ?(.+?)[,.;:]? (?:then )?(?:find|what is|what's|evaluate|compute|calculate|and) \1\((-?[\d./]+)\)$/i,
       build: (m) => { const body = E(m[3]); if (!body || /[=<>]/.test(body)) return null; return out(subst(body, m[2], m[4]), `${m[1]}(${m[4]}) for ${m[1]}(${m[2]}) = ${body}`); } },
+    // the value first: "f(3) if f(x) = x^2 + 1", "what is g(2) when g(t) = 3t - 1"
+    { id: "fn-value", re: /^(?:find |what is |what's |evaluate |compute |calculate )?([a-z])\((-?[\d./]+)\),? (?:if|when|where|given|given that|for|with) \1\(([a-z])\) ?= ?(.+)$/i,
+      build: (m) => { const body = E(m[4]); if (!body || /[=<>]/.test(body)) return null; return out(subst(body, m[3], m[2]), `${m[1]}(${m[2]}) for ${m[1]}(${m[3]}) = ${body}`); } },
     { id: "solve-trailing", re: /^(.+?[=<>].*?)[,.;:]? (?:find|solve for|what is|what's|determine) ([a-z])$/i,
       build: (m) => { const t = expr(m[1]); if (!/[=<>]/.test(t) || !new RegExp(`(?<![A-Za-z_])${m[2]}(?![A-Za-z_(])`).test(t)) return null; return { math: t, goal: "solve", variable: m[2], interpretation: `solve ${t} for ${m[2]}` }; } },
     { id: "geo-series-sum", re: /^(?:(?:find |what is |compute |calculate )?(?:the )?sum of (?:the )?(?:infinite )?(?:geometric )?(?:series|sequence)?:? ?)?(.+?)\s*\+\s*(?:\.\.\.|…)?(?:\s*(?:to infinity|to oo|forever|and so on(?: forever)?|etc\.?))?$/i,
@@ -468,7 +546,7 @@ export function morePatterns({ expr, mathOf, LEAD, re }) {
     // ---------------------------------------------------------------- probability
     { id: "prob-die", re: /^(?:what is )?(?:the )?probability (?:of )?(?:rolling|getting|throwing) (?:a|an) (\d) (?:on|with) (?:a |one )?(?:fair |single |standard |six[- ]sided )*(?:die|dice)$/i,
       build: (m) => (+m[1] >= 1 && +m[1] <= 6 ? out("1/6", `one favourable face out of 6 equally likely faces: 1/6`) : null) },
-    { id: "prob-dice-sum", re: /^(?:what is )?(?:the )?probability (?:of )?(?:rolling|getting|throwing) (?:a (?:sum|total) of )?(\d+)(?: as the (?:sum|total))? (?:with|on|using) (?:two|2|a pair of) (?:fair )?dice$/i,
+    { id: "prob-dice-sum", re: /^(?:what is )?(?:the )?probability (?:of )?(?:rolling|getting|throwing) (?:a (?:sum|total) of |a total |a |an )?(\d+)(?: as the (?:sum|total))? (?:with|on|using) (?:two|2|a pair of) (?:fair )?dice$/i,
       build: (m) => { const s = +m[1]; return s >= 2 && s <= 12 ? out(`(6 - abs(${s} - 7))/36`, `two dice: 36 equally likely outcomes, of which 6 - |${s} - 7| give a sum of ${s}`) : null; } },
     { id: "prob-dice-sum", re: /^(?:what is )?(?:the )?probability (?:of )?(?:getting |rolling )?(?:a (?:sum|total) of )?(\d+) (?:when|by|if) (?:rolling|throwing|you roll) (?:two|2|a pair of) (?:fair )?dice$/i,
       build: (m) => { const s = +m[1]; return s >= 2 && s <= 12 ? out(`(6 - abs(${s} - 7))/36`, `two dice: 36 equally likely outcomes, of which 6 - |${s} - 7| give a sum of ${s}`) : null; } },
@@ -643,7 +721,7 @@ export function morePatterns({ expr, mathOf, LEAD, re }) {
         if ((want === "geometric" || (!want && geom && !arith)) && geom) return out(`${t[0]} * ((${t[1]})/(${t[0]}))^(${n} - 1)`, `geometric sequence: a_n = a_1 r^(n - 1) with a_1 = ${t[0]}, r = ${t[1]}/${t[0]}`);
         return null;
       } },
-    { id: "series-finite", re: /^(?:find |what is )?(?:the )?sum of (?:the )?(?:first (\w+) terms of (?:the )?)?(?:(arithmetic|geometric) (?:series|sequence|progression):? ?|(?:series|sequence|progression):? ?)?(-?\d[\d./]*(?:\s*(?:,|\+)\s*-?\d[\d./]*){2,})(?:\s*(?:,|\+)?\s*(?:\.{1,3}|…)?)?(?:,? ?(?:to |with |for )?(\w+) terms)?$/i,
+    { id: "series-finite", re: /^(?:find |what is )?(?:the )?(?:sum of (?:the )?)?(?:first (\w+) terms of (?:the )?)?(?:(arithmetic|geometric) (?:series|sequence|progression):? ?|(?:series|sequence|progression):? ?)?(-?\d[\d./]*(?:\s*(?:,|\+)\s*-?\d[\d./]*){2,})(?:\s*(?:,|\+)?\s*(?:\.{1,3}|…)?)?(?:,? ?(?:to |with |for )?(\w+) terms)?$/i,
       build: (m) => {
         const n = nOf(m[1] || m[4] || "");
         if (!/^\d+$/.test(n)) return null;

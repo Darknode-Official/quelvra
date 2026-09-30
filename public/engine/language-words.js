@@ -47,6 +47,9 @@ export function normaliseWords(s, wordsToNumbers) {
 }
 // sentences, without their final punctuation
 export function sentencesOf(t) {
+  // "and" before a second fact about the same people is a sentence break too:
+  // "john is twice as old as mary and the sum of their ages is 36, how old is mary"
+  t = t.replace(/,?\s+and\s+(?=(?:the sum of their|the total of their|their (?:present |combined )?ages?\b|together their)\b)/g, ". ");
   return t.split(/(?<=[.?!;])\s+/).map((x) => x.replace(/[.?!;,]+$/, "").trim()).filter(Boolean);
 }
 
@@ -760,6 +763,8 @@ function work(sents) {
   const Q_TOG = [
     [new RegExp(`^(?:if (?:both|they|all 3|all three) (?:are open|work together|are working),? )?how (?:long|many ${TU}) (?:will|would|does|do|should) it take(?: (?:them|both|both of them|them both|the 2|the two|all 3|all three|all of them|the \\w+|both \\w+))?(?: working)?(?: together)?(?: to (?:[a-z]+ ?){1,6})?(?: if (?:both|they) (?:are open|work together))?(?: working together| together)?$`), (mm) => { askUnit = mm[1] || null; want = "together"; }],
     [new RegExp(`^how (?:long|many ${TU}) (?:will|would|do|does) (?:they|both|both of them|all 3|all three)(?: take)?(?: to (?:[a-z]+ ?){1,6})?(?: working together| together)$`), (mm) => { askUnit = mm[1] || null; want = "together"; }],
+    // the terse form: "how long together", "how long working together", "how long if they work together"
+    [new RegExp(`^how (?:long|many ${TU})(?: (?:if|when) (?:they|both|all) work)?(?: working)? together(?: to (?:[a-z]+ ?){1,6})?$`), (mm) => { askUnit = mm[1] || null; want = "together"; }],
     [new RegExp(`^how many ${TU} (?:will it take )?to (?:[a-z]+ ?){1,6} (?:with|using) (?:both|all) (?:[a-z]+)$`), (mm) => { askUnit = mm[1]; want = "together"; }],
     [new RegExp(`^how (?:long|many ${TU}) (?:would|will|does) ([a-z]+) (?:take )?(?:alone|by (?:him|her)self|working alone)(?: to (?:[a-z]+ ?){1,6})?$`), (mm) => { if (!partner || mm[2] !== partner) return false; askUnit = mm[1] || null; want = "other"; }],
     [new RegExp(`^how (?:long|many ${TU}) (?:does|would|will) (?:it take )?the other (?:[a-z]+ )?(?:take )?(?:alone|by itself|working alone)?(?: to (?:[a-z]+ ?){1,6})?(?: alone| by itself)?$`), (mm) => { askUnit = mm[1] || null; want = "other"; }],

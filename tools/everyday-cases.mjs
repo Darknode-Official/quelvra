@@ -175,6 +175,28 @@ export const CASES = [
   ["r7-fin", "compound interest on 1000 at 5% for 3 years compounded monthly", { re: /161\.47\b/ }], ["r7-fin", "value of 1000 at 5% for 3 years compounded annually", 1157.625],
   ["r7-fin", "monthly payment on a 200000 loan at 6% for 30 years", { re: /1199\.1\b/ }], ["r7-fin", "future value of 500 a month at 6% for 10 years", { re: /81939\.67\b/ }],
   ["r7-fin", "how much do i need to invest at 4% to have 10000 in 5 years", { re: /8219\.27\b/ }],
+  // round 8: percent verbs, parity series, prime products, roots and logs by name, hands, degrees, squares, bases, digit tricks
+  ["r8-pct", "20% off of 80", 64], ["r8-pct", "80 increased by 25%", 100], ["r8-pct", "120 reduced by 10 percent", 108],
+  ["r8-ser", "sum of even numbers from 2 to 50", 650], ["r8-ser", "sum of odd numbers between 1 and 100", 2500], ["r8-ser", "sum of the first 10 odd numbers", 100],
+  ["r8-ser", "geometric series 2 + 6 + 18 + ... 10 terms", 59048], ["r8-ser", "100th triangular number", 5050],
+  ["r8-nt", "product of the first 5 primes", 2310], ["r8-nt", "sum of the first 4 primes", 17], ["r8-nt", "is 28 a perfect number", { re: /true/ }], ["r8-nt", "is 12 a perfect number", { re: /false/ }],
+  ["r8-nt", "is 12321 a palindrome number", { re: /true/ }], ["r8-nt", "is 12345 a palindrome", { re: /false/ }],
+  ["r8-nt", "next perfect square after 50", 64], ["r8-nt", "largest perfect square less than 50", 49], ["r8-nt", "nearest perfect cube to 30", 27],
+  ["r8-nt", "digit sum of 2^20", 31], ["r8-nt", "digit sum of 999", 27], ["r8-nt", "reverse the digits of 12345", 54321], ["r8-nt", "9876 reversed", 6789],
+  ["r8-fn", "5th root of 32", 2], ["r8-fn", "fourth root of 81", 3], ["r8-fn", "log10 of 1000", 3], ["r8-fn", "log_2 of 1024", 10],
+  ["r8-fn", "f(3) if f(x) = x^2 + 1", 10], ["r8-fn", "what is g(2) when g(t) = 3t - 1", 5],
+  ["r8-comb", "how many 5 card hands from 52 cards", 2598960], ["r8-comb", "how many 13-card hands can be dealt from a standard 52-card deck", 635013559600],
+  ["r8-comb", "probability of rolling a 7 with two dice", 1 / 6],
+  ["r8-geo", "pi/4 in degrees", 45], ["r8-geo", "arcsin 0.5 in degrees", 30], ["r8-geo", "2 radians in degrees", 360 / Math.PI], ["r8-geo", "convert 180 degrees into radians", Math.PI],
+  ["r8-geo", "perimeter of a square with area 49", 28], ["r8-geo", "area of a square with perimeter 20", 25], ["r8-geo", "side of a square with diagonal 10", 5 * Math.SQRT2],
+  ["r8-fin", "what is 1000 dollars at 3% compounded monthly for 5 years", { re: /1161\.62\b/ }], ["r8-fin", "1000 dollars at 5% for 10 years compounded annually", { re: /1628\.89\b/ }],
+  ["r8-base", "binary of 45", { re: /101101/ }], ["r8-base", "hex of 255", { re: /\bFF\b/i }], ["r8-base", "base 5 representation of 100", { re: /\b400\b/ }],
+  ["r8-base", "octal 17 to decimal", 15], ["r8-base", "hexadecimal ff to decimal", 255], ["r8-base", "MCMXCIV in numbers", 1994],
+  ["r8-rate", "speed if 150 km in 2 hours", 75], ["r8-rate", "time to travel 300 km at 60 km/h", 5], ["r8-rate", "distance at 60 km/h for 3 hours", 180],
+  ["r8-rate", "distance at 60 km/h for 30 minutes", 30], ["r8-rate", "distance covered at 5 m/s in 12 seconds", 60],
+  ["r8-word", "if a can do a job in 6 hours and b can do it in 3 hours, how long together", 2],
+  ["r8-word", "a pipe fills a tank in 6 hours and another fills it in 3 hours, how long together", 2],
+  ["r8-word", "john is twice as old as mary and the sum of their ages is 36, how old is mary", { re: /m = 12/ }],
 ];
 // Phrasings that look everyday but have no single right answer from the words given: Quelvra must refuse them.
 export const TRAPS = [
@@ -210,4 +232,11 @@ export const TRAPS = [
   "area of a sector with radius 6 and angle 400 degrees", // more than a full turn
   "what fraction of a minute is 3 hours", // the smaller unit must be asked about
   "what fraction of an hour is 45 apples", // not a unit of time
+  "how many 60 card hands from 52 cards", // cannot deal more cards than the deck holds
+  "sum of even numbers from 50 to 2", // the range runs backwards
+  "time to travel 300 miles at 60 km/h", // distance and speed units disagree
+  "time to travel 300 km at 0 km/h", // never arrives
+  "digit sum of 2^30000", // beyond the exact-power cap
+  "perimeter of a square with perimeter 20", // asks for what was given
+  "binary 102 to decimal", // 2 is not a binary digit
 ];
